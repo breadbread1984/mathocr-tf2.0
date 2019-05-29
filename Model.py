@@ -57,10 +57,12 @@ class CoverageAttention(tf.keras.Model):
         super(CoverageAttention, self).__init__();
         self.attn_history = None;
         self.initial_alpha_shape = None;
-        self.conv = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = kernel_size, padding = 'same');
-        self.dense1 = tf.keras.layers.Dense(units = 512, use_bias = False);
-        self.dense2 = tf.keras.layers.Dense(units = 512, use_bias = False);
-        self.dense3 = tf.keras.layers.Dense(units = 1, use_bias = False);
+        self.conv1 = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = kernel_size, padding = 'same');
+        self.conv2 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
+        self.conv3 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
+        self.conv4 = tf.keras.layers.Conv2D(filters = 1, kernel_size = (1,1), padding = 'same', use_bias = False);
+        self.flatten = tf.keras.layers.Flatten();
+        self.softmax = tf.keras.layers.Softmax();
 
     @tf.function
     def reset_alpha(self):
@@ -75,33 +77,26 @@ class CoverageAttention(tf.keras.Model):
             self.reset(tf.shape(inputs));
             self.initial_alpha_shape = tuple(tf.shape(inputs)[:3]) + (1,);
         # alpha_tm1.shape = (batch, input height, input width, output_filters)
-        alpha_tm1 = self.conv(tf.math.reduce_sum(self.attn_history, axis = -1, keepdims = True));
-        # alpha_tm1_dim_merged.shape = (batch * input_height * input_width, output_filters)
-        alpha_tm1_dim_merged = tf.reshape(alpha_tm1, (-1, tf.shape(alpha_tm1)[3]));
-        # prev.shape = (batch, input_height * input_width, 512)
-        prev = tf.reshape(self.dense2(alpha_tm1_dim_merged), (-1, tf.shape(inputs)[1] * tf.shape(inputs)[2], 512));
-        # inputs_dim_merged.shape = (batch * input_height * input_width, input_filters)
-        inputs_dim_merged = tf.reshape(inputs, (-1, tf.shape(inputs)[3]));
-        # current.shape = (batch, input_height * input_width, 512)
-        current = tf.reshape(self.dense1(inputs_dim_merged), (-1, tf.shape(inputs)[1] * tf.shape(inputs)[2], 512));
-        # nxt.shape = (batch, 1, 512)
-        nxt = tf.expand_dims(pred, 1);
-        # response.shape = (batch, input_height * input_width, 512)
+        alpha_tm1 = self.conv1(tf.math.reduce_sum(self.attn_history, axis = -1, keepdims = True));
+        # prev.shape = (batch, input_height, input_width, 512)
+        prev = self.conv2(alpha_tm1);
+        # current.shape = (batch, input_height, input_width, 512)
+        current = self.conv3(inputs);
+        # nxt.shape = (batch, 1, 1, 512)
+        nxt = tf.expand_dims(tf.expand_dims(pred, 1),1);
+        # response.shape = (batch, input_height, input_width, 512)
         response = tf.math.tanh(nxt + current + prev);
-        # response_dim_merged.shape = (batch * input_height * input_width, 512)
-        response_dim_merged = tf.reshape(response, (-1, 512));
-        # e_t.shape = (batch, input_height * input_width, 1)
-        e_t = tf.reshape(self.dense3(response_dim_merged), (-1, tf.shape(inputs)[1] * tf.shape(inputs)[2], 1));
-        # attn.shape = (batch, input_height * input_width, 1)
-        attn = tf.nn.softmax(e_t, axis = 1);
-        self.attn_history = tf.concat([
-            self.attn_history,
-            tf.reshape(attn, (-1, tf.shape(inputs)[1], tf.shape(inputs)[2], 1))
-        ], axis = -1);
-        # cA_t_L.shape = (batch, input_height * input_width, input_filters)
-        weighted_inputs = attn * tf.reshape(inputs, (-1, tf.shape(inputs)[1] * tf.shape(inputs)[2], tf.shape(inputs)[3]));
+        # e_t.shape = (batch, input_height, input_width, 1)
+        e_t = self.conv4(response);
+        # attn.shape = (batch, input_height * input_width)
+        attn = self.softmax(self.flatten(e_t), axis = 1);
+        # attn.shape = (batch, input_height, input_width, 1)
+        attn = tf.reshape(attn, (-1, tf.shape(inputs)[1], tf.shape(inputs)[2], 1));
+        self.attn_history = tf.concat([self.attn_history,attn], axis = -1);
+        # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
+        weighted_inputs = attn * inputs;
         # context.shape = (batch, input_filters)
-        context = tf.math.reduce_sum(weighted_inputs, axis = 1);
+        context = tf.math.reduce_sum(weighted_inputs, axis = [1,2]);
         return context;
 
 class Maxout(tf.keras.Model):
