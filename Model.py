@@ -73,13 +73,13 @@ class CoverageAttention(tf.keras.Model):
     @tf.function
     def call(self, inputs, pred):
 
-        if self.attn_history = None:
+        if self.attn_history is None:
             self.reset(tf.shape(inputs));
             self.initial_alpha_shape = tuple(tf.shape(inputs)[:3]) + (1,);
-        # alpha_tm1.shape = (batch, input height, input width, output_filters)
-        alpha_tm1 = self.conv1(tf.math.reduce_sum(self.attn_history, axis = -1, keepdims = True));
+        # attn_prev.shape = (batch, input height, input width, output_filters)
+        attn_prev = self.conv1(tf.math.reduce_sum(self.attn_history, axis = -1, keepdims = True));
         # prev.shape = (batch, input_height, input_width, 512)
-        prev = self.conv2(alpha_tm1);
+        prev = self.conv2(attn_prev);
         # current.shape = (batch, input_height, input_width, 512)
         current = self.conv3(inputs);
         # nxt.shape = (batch, 1, 1, 512)
@@ -114,7 +114,7 @@ class Maxout(tf.keras.Model):
 
 class Decoder(tf.keras.Model):
     
-    def __init__(self, num_classes, embedding_dim = 256, hidden_size = 256,  **kwargs)
+    def __init__(self, num_classes, embedding_dim = 256, hidden_size = 256):
         
         super(Decoder,self).__init__();
         self.embedding = tf.keras.layers.Embedding(input_dim = num_classes, output_dim = embedding_dim);
@@ -123,7 +123,7 @@ class Decoder(tf.keras.Model):
         self.dense1 = tf.keras.layers.Dense(units = 512, use_bias = False);
         self.dense2 = tf.keras.layers.Dense(units = embedding_dim, use_bias = False);
         self.dense3 = tf.keras.layers.Dense(units = embedding_dim, use_bias = False);
-        self.dense4 = tf.keras.layers.Dense(units = num_classes);
+        self.dense4 = tf.keras.layers.Dense(units = num_classes, use_bias = False);
         self.coverage_attn_low = CoverageAttention(output_filters = 256, kernel_size = (11,11));
         self.coverage_attn_high = CoverageAttention(output_filters = 256, kernel_size = (7,7));
         self.maxout = Maxout(2);
@@ -165,3 +165,8 @@ class Decoder(tf.keras.Model):
         # out.shape = (batch, num classes)
         out = self.dense4(out);
         return out, new_hidden; 
+
+if __name__ == "__main__":
+    
+    encoder = Encoder((256,256,1));
+    decoder = Decoder(100);
