@@ -15,6 +15,9 @@ class CrohmeDataset(object):
     
     def __init__(self, groundtruth, tokens_file, root):
         
+        # groundtruth give the corresponce between image path and latex in text.
+        # tokens file give the corresponce between latex alphabets to integer.
+        # root is where the images are stored.
         self.groundtruth = groundtruth;
         self.token_to_id, self.id_to_token = self.load_vocab(tokens_file);
         self.root = root;
