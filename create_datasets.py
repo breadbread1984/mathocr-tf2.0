@@ -64,7 +64,7 @@ class CrohmeDataset(object):
     def encode_truth(self, truth, token_to_id):
         
         truth_tokens = [];
-        remaining_truth = remove_unknown_tokens(truth).strip();
+        remaining_truth = self.remove_unknown_tokens(truth).strip();
         while len(remaining_truth) > 0:
             try:
                 matching_starts = [
@@ -85,14 +85,14 @@ class CrohmeDataset(object):
         with open(tokens_file, "r") as fd:
             reader = csv.reader(fd, delimiter="\t");
             tokens = next(reader);
-            tokens.extend(SPECIAL_TOKENS);
+            tokens.extend(self.SPECIAL_TOKENS);
             token_to_id = {tok: i for i, tok in enumerate(tokens)};
             id_to_token = {i: tok for i, tok in enumerate(tokens)};
             return token_to_id, id_to_token;
 
     def generate_tfrecord(self, output = 'trainset.tfrecord'):
 
-        writer = tf.python_io.TFRecordWriter(output);
+        writer = tf.io.TFRecordWriter(output);
         with open(self.groundtruth, "r") as fd:
             reader = csv.reader(fd, delimiter = '\t');
             for p, truth in reader:
@@ -104,10 +104,10 @@ class CrohmeDataset(object):
                     feature = {
                         'data': tf.train.Feature(bytes_list = tf.train.BytesList(value = [img.tobytes()])),
                         'text': tf.train.Feature(bytes_list = tf.train.BytesList(value = [truth.encode('utf-8')])),
-                        'encoded': tf.train.Feature(bytes_list = tf.train.Int64List(value = [
-                            token_to_id[self.START],
-                            *self.encode_truth(truth, token_to_id),
-                            token_to_id[self.END]
+                        'encoded': tf.train.Feature(int64_list = tf.train.Int64List(value = [
+                            self.token_to_id[self.START],
+                            *self.encode_truth(truth, self.token_to_id),
+                            self.token_to_id[self.END]
                         ]))
                     }
                 ));
@@ -117,8 +117,14 @@ class CrohmeDataset(object):
 if __name__ == "__main__":
     
     dataset = CrohmeDataset(
-        groundtruth = './crohme-png/groundtruth_train.tsv',
-        tokens_file = './crohme-png/tokens.tsv',
-        root = './crohme-png/train'
+        groundtruth = './CROHME-png/groundtruth_train.tsv',
+        tokens_file = './CROHME-png/tokens.tsv',
+        root = './CROHME-png/train'
     );
     dataset.generate_tfrecord('trainset.tfrecord');
+    dataset = CrohmeDataset(
+        groundtruth = './CROHME-png/groundtruth_2016.tsv',
+        tokens_file = './CROHME-png/tokens.tsv',
+        root = './CROHME-png/test/2016'
+    );
+    dataset.generate_tfrecord('testset.tfrecord');
