@@ -96,19 +96,19 @@ class CrohmeDataset(object):
         with open(self.groundtruth, "r") as fd:
             reader = csv.reader(fd, delimiter = '\t');
             for p, truth in reader:
-                img = cv2.imread(os.path.join(self.root, p + ".png"));
+                img = cv2.imread(os.path.join(self.root, p + ".png"), cv2.IMREAD_GRAYSCALE);
                 if img is None:
                     print('can\'t open image ' + os.path.join(self.root, p + ".png"));
                     continue;
+                text = [truth.encode('ascii')];
+                tokens = [self.token_to_id[self.START],*self.encode_truth(truth, self.token_to_id),self.token_to_id[self.END]];
                 trainsample = tf.train.Example(features = tf.train.Features(
                     feature = {
                         'data': tf.train.Feature(bytes_list = tf.train.BytesList(value = [img.tobytes()])),
-                        'text': tf.train.Feature(bytes_list = tf.train.BytesList(value = [truth.encode('utf-8')])),
-                        'encoded': tf.train.Feature(int64_list = tf.train.Int64List(value = [
-                            self.token_to_id[self.START],
-                            *self.encode_truth(truth, self.token_to_id),
-                            self.token_to_id[self.END]
-                        ]))
+                        'text': tf.train.Feature(bytes_list = tf.train.BytesList(value = text)),
+                        'text_length': tf.train.Feature(int64_list = tf.train.Int64List(value = [len(text)])),
+                        'tokens': tf.train.Feature(int64_list = tf.train.Int64List(value = tokens)),
+                        'tokens_length': tf.train.Feature(int64_list = tf.train.Int64List(value = [len(tokens)]))
                     }
                 ));
                 writer.write(trainsample.SerializeToString());
