@@ -101,16 +101,20 @@ class CrohmeDataset(object):
                     print('can\'t open image ' + os.path.join(self.root, p + ".png"));
                     continue;
                 text = [truth.encode('ascii')];
-                tokens = [self.token_to_id[self.START],*self.encode_truth(truth, self.token_to_id),self.token_to_id[self.END]];
-                trainsample = tf.train.Example(features = tf.train.Features(
-                    feature = {
+                tokens = [self.token_to_id[self.START], 
+                          *self.encode_truth(truth, self.token_to_id),
+                          self.token_to_id[self.END]];
+                trainsample = tf.train.SequenceExample(
+                    context = tf.train.Features(feature = {
                         'data': tf.train.Feature(bytes_list = tf.train.BytesList(value = [img.tobytes()])),
-                        'text': tf.train.Feature(bytes_list = tf.train.BytesList(value = text)),
                         'text_length': tf.train.Feature(int64_list = tf.train.Int64List(value = [len(text)])),
-                        'tokens': tf.train.Feature(int64_list = tf.train.Int64List(value = tokens)),
                         'tokens_length': tf.train.Feature(int64_list = tf.train.Int64List(value = [len(tokens)]))
-                    }
-                ));
+                    }),
+                    feature_lists = tf.train.FeatureLists(feature_list={
+                        'text': tf.train.FeatureList(feature = [tf.train.Feature(bytes_list = tf.train.BytesList(value = [alphabet])) for alphabet in text]),
+                        'tokens': tf.train.FeatureList(feature = [tf.train.Feature(int64_list = tf.train.Int64List(value = [token])) for token in tokens])
+                    })
+                );
                 writer.write(trainsample.SerializeToString());
         writer.close();
 
