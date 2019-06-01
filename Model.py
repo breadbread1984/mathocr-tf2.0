@@ -173,5 +173,6 @@ class Decoder(tf.keras.Model):
 
 if __name__ == "__main__":
     
+    assert tf.executing_eagerly();
     encoder = Encoder((256,256,1));
     decoder = Decoder(100);

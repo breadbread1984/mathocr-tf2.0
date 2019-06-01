@@ -126,6 +126,7 @@ class CrohmeDataset(object):
 
 if __name__ == "__main__":
     
+    assert tf.executing_eagerly();
     dataset = CrohmeDataset(
         groundtruth = './CROHME-png/groundtruth_train.tsv',
         tokens_file = './CROHME-png/tokens.tsv',
