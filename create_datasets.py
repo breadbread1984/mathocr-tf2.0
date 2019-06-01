@@ -100,7 +100,7 @@ class CrohmeDataset(object):
                 if img is None:
                     print('can\'t open image ' + os.path.join(self.root, p + ".png"));
                     continue;
-                text = [truth.encode('ascii')];
+                text = truth.encode('ascii');
                 tokens = [self.token_to_id[self.START], 
                           *self.encode_truth(truth, self.token_to_id),
                           self.token_to_id[self.END]];
@@ -111,7 +111,7 @@ class CrohmeDataset(object):
                         'tokens_length': tf.train.Feature(int64_list = tf.train.Int64List(value = [len(tokens)]))
                     }),
                     feature_lists = tf.train.FeatureLists(feature_list={
-                        'text': tf.train.FeatureList(feature = [tf.train.Feature(bytes_list = tf.train.BytesList(value = [alphabet])) for alphabet in text]),
+                        'text': tf.train.FeatureList(feature = [tf.train.Feature(int64_list = tf.train.Int64List(value = [alphabet])) for alphabet in text]),
                         'tokens': tf.train.FeatureList(feature = [tf.train.Feature(int64_list = tf.train.Int64List(value = [token])) for token in tokens])
                     })
                 );
