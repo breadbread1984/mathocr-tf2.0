@@ -65,17 +65,17 @@ class CoverageAttention(tf.keras.Model):
         self.softmax = tf.keras.layers.Softmax();
 
     @tf.function
-    def reset_alpha(self):
+    def reset(self):
         
-        assert self.initial_alpha_shape is not None;
-        self.attn_history = tf.zeros(self.initial_alpha_shape); # a reference to attn
+        if self.initial_alpha_shape is not None:
+            self.attn_history = tf.zeros(self.initial_alpha_shape); # a reference to attn
 
     @tf.function
     def call(self, inputs, pred):
 
         if self.attn_history is None:
-            self.reset(tf.shape(inputs));
             self.initial_alpha_shape = tuple(tf.shape(inputs)[:3]) + (1,);
+            self.reset();
         # attn_prev.shape = (batch, input height, input width, output_filters)
         attn_prev = self.conv1(tf.math.reduce_sum(self.attn_history, axis = -1, keepdims = True));
         # prev.shape = (batch, input_height, input_width, 512)
@@ -129,15 +129,20 @@ class Decoder(tf.keras.Model):
         self.maxout = Maxout(2);
 
     @tf.function
-    def reset_attention(self, low_input_shape, high_input_shape):
+    def reset(self):
         
-        self.coverage_attn_low.reset_alpha(low_input_shape);
-        self.coverage_attn_high.reset_alpha(high_input_shape);
+        self.coverage_attn_low.reset();
+        self.coverage_attn_high.reset();
         
     @tf.function
-    def call(self, inputs, hidden, low_res, high_res):
+    def call(self, inputs, low_res, high_res, hidden = None):
         
         assert tf.shape(inputs)[1] == 1;
+        # if no hidden status of previous step is provided
+        # reset status of GRU.
+        if hidden is None:
+            self.reset();
+            self.gru1.reset_states();
         # inputs.shape = (batch, seq_length = 1, num classes)
         # hidden.shape = (batch, hidden size = 256)
         # embedded.shape = (batch, seq_length = 1,embedding size = 256)
@@ -153,7 +158,7 @@ class Decoder(tf.keras.Model):
         # context.shape = (batch,seq_length = 1024)
         context = tf.expand_dims(tf.concat([contex_low,contex_high], axis = -1), axis = 1);
         # new_hidden.shape = (batch, hidden size = 256)
-        new_hidden = self.gru2(context, pred);
+        new_hidden = self.gru2(context, initial_state = pred);
         # w_s.shape = (batch, embedding size = 256)
         w_s = self.dense2(new_hidden);
         # w_c.shape = (batch, embedding size = 256)
@@ -164,7 +169,7 @@ class Decoder(tf.keras.Model):
         out = self.maxout(out);
         # out.shape = (batch, num classes)
         out = self.dense4(out);
-        return out, new_hidden; 
+        return out, new_hidden;
 
 if __name__ == "__main__":
     

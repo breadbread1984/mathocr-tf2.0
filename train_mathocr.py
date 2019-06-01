@@ -1,7 +1,15 @@
 #!/usr/bin/python3
 
+import pickle;
 import tensorflow as tf;
 from Model import Encoder, Decoder;
+
+batch_num = 100;
+tokens_length_max = 90;
+START = "<SOS>";
+END = "<EOS>";
+PAD = "<PAD>";
+SPECIAL_TOKENS = [START, END, PAD];
 
 def parse_function(serialized_example, crop = True, transform = True):
     context, sequence = tf.io.parse_single_sequence_example(
@@ -37,20 +45,33 @@ def parse_function(serialized_example, crop = True, transform = True):
     if transform:
         data = tf.image.resize(data, (128,128))
         
-    return data, tokens, text;
+    # pad to fix length to enable batch
+    tokens = tf.pad(tokens, paddings = [[0,tokens_length_max - tf.shape(tokens)[0]]], constant_values = -1);
+        
+    return data, tokens;
 
 def main():
     
+    # load token
+    with open('token_id_map.dat','rb') as f:
+        token_to_id = pickle.load(f);
+        id_to_token = pickle.load(f);
+    assert len(token_to_id) == len(id_to_token);
+    # networks
+    encoder = Encoder((128,128,1));
+    decoder = Decoder(len(token_to_id));
     # load dataset
-    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function).shuffle(100);
-    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function);
+    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function).shuffle(100).batch(batch_num);
+    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function).batch(batch_num);
     while True:
-        for data, tokens, _ in trainset:
-            import cv2;
-            img = data.numpy().astype('uint8');
-            cv2.imshow('img',img);
-            cv2.waitKey();
-
+        for data, tokens in trainset:
+            with tf.GradientTape() as tape:
+                low_res, high_res = encoder(data);
+                sequence = tf.ones((batch_num,1)) * token_to_id[START];
+                hidden = None;
+                
+                out, hidden = decoder()
+            
 if __name__ == "__main__":
 
     main();

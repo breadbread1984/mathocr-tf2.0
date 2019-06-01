@@ -92,6 +92,8 @@ class CrohmeDataset(object):
 
     def generate_tfrecord(self, output = 'trainset.tfrecord'):
 
+        text_length_max = 0;
+        tokens_length_max = 0;
         writer = tf.io.TFRecordWriter(output);
         with open(self.groundtruth, "r") as fd:
             reader = csv.reader(fd, delimiter = '\t');
@@ -115,8 +117,12 @@ class CrohmeDataset(object):
                         'tokens': tf.train.FeatureList(feature = [tf.train.Feature(int64_list = tf.train.Int64List(value = [token])) for token in tokens])
                     })
                 );
+                text_length_max = max(text_length_max, len(text));
+                tokens_length_max = max(tokens_length_max, len(tokens));
                 writer.write(trainsample.SerializeToString());
         writer.close();
+        print('maximum of text_length is', text_length_max);
+        print('maximum of tokens_length is', tokens_length_max);
 
 if __name__ == "__main__":
     
