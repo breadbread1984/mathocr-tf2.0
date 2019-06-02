@@ -127,12 +127,6 @@ class Decoder(tf.keras.Model):
         self.coverage_attn_low = CoverageAttention(output_filters = 256, kernel_size = (11,11));
         self.coverage_attn_high = CoverageAttention(output_filters = 256, kernel_size = (7,7));
         self.maxout = Maxout(2);
-
-    @tf.function
-    def reset(self):
-        
-        self.coverage_attn_low.reset();
-        self.coverage_attn_high.reset();
         
     @tf.function
     def call(self, inputs, low_res, high_res, hidden = None):
@@ -141,11 +135,13 @@ class Decoder(tf.keras.Model):
         # if no hidden status of previous step is provided
         # reset status of GRU.
         if hidden is None:
-            self.reset();
+            self.coverage_attn_low.reset();
+            self.coverage_attn_high.reset();
             self.gru1.reset_states();
-        # inputs.shape = (batch, seq_length = 1, num classes)
-        # hidden.shape = (batch, hidden size = 256)
+            self.gru2.reset_states();
+        # inputs.shape = (batch, seq_length = 1)
         # embedded.shape = (batch, seq_length = 1,embedding size = 256)
+        # hidden.shape = (batch, hidden size = 256)
         embedded = self.embedding(inputs);
         # pred.shape = (batch, hidden size = 256)
         pred = self.gru1(embedded, initial_state = hidden);
@@ -155,8 +151,8 @@ class Decoder(tf.keras.Model):
         context_low = self.coverage_attn_low(low_res, u_pred);
         # context_high.shape = (batch, 512)
         context_high = self.coverage_attn_high(high_res, u_pred);
-        # context.shape = (batch,seq_length = 1024)
-        context = tf.expand_dims(tf.concat([contex_low,contex_high], axis = -1), axis = 1);
+        # context.shape = (batch,seq_length = 1, 1024)
+        context = tf.expand_dims(tf.concat([context_low,context_high], axis = -1), axis = 1);
         # new_hidden.shape = (batch, hidden size = 256)
         new_hidden = self.gru2(context, initial_state = pred);
         # w_s.shape = (batch, embedding size = 256)

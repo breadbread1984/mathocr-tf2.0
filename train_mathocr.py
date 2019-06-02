@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import os;
 import pickle;
 import tensorflow as tf;
 from Model import Encoder, Decoder;
@@ -64,16 +65,52 @@ def main():
     # load dataset
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).batch(batch_num);
+    # log utilities
+    avg_loss = tf.keras.metrics.Mean(name = 'loss', dtype = tf.float32);
+    log = tf.summary.create_file_writer('checkpoints');
+    # checkpoints utilities
+    optimizer = tf.keras.optimizers.Adam(1e-3);
+    if False == os.path.exists('checkpoints'): os.mkdir('checkpoints');
+    checkpoints = tf.train.Checkpoint(mode = )
     while True:
+        # data.shape = (batch, 128, 128, 1)
+        # tokens.shape = (batch, tokens_length_max = 90)
         for data, tokens in trainset:
             with tf.GradientTape() as tape:
-                low_res, high_res = encoder(data);
-                sequence = tf.ones((batch_num,1)) * token_to_id[START];
-                
+                # context tensors
                 hidden = None;
-                
-                out, hidden = decoder()
-            
+                sequence = tf.ones((batch_num,1)) * token_to_id[START];
+                decoded_values = tf.TensorArray(dtype = tf.float32);
+                # encode the input image
+                low_res, high_res = encoder(data);
+                # decode into a sequence of tokens
+                for i in tf.range(tokens_length_max - 1):
+                    # random choose whether the previous token is from prediction or from ground truth
+                    # previous.shape = (batch, 1)
+                    previous = tf.cond(
+                        tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
+                        lambda: tokens[:,i], lambda: sequence[:,-1]
+                    );
+                    # predict current token
+                    out, hidden = tf.cond(
+                        tf.equal(i,0),
+                        lambda:decoder(previous, low_res, high_res),
+                        lambda:decoder(previous, low_res, high_res, hidden)
+                    );
+                    # top1_id.shape = (batch, 1)
+                    _, top1_id = tf.math.top_k(out,1);
+                    # append sequence
+                    sequence = tf.concat([sequence, top1_id], axis = -1);
+                    decoded_values.apend(i, out);
+                # decoded.shape = (batch, seq_length = 89, num_classes)
+                decoded = tf.transpose(decoded_values.stack(), perm = (0,2,1));
+                # skip the first start token, only use the following ground truth values
+                expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+                # get loss
+                loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(decoded, expected);
+                avg_loss.update_state(loss);
+                if tf.equal(optimizer)
+                    
 if __name__ == "__main__":
 
     assert tf.executing_eagerly();
