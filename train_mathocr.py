@@ -98,8 +98,8 @@ def main():
                     # predict current token
                     out, hidden = tf.cond(
                         tf.equal(i,0),
-                        lambda:decoder(previous, low_res, high_res),
-                        lambda:decoder(previous, low_res, high_res, hidden)
+                        lambda:decoder(previous, low_res, high_res, reset = True),
+                        lambda:decoder(previous, low_res, high_res, hidden = hidden)
                     );
                     # top1_id.shape = (batch, 1)
                     _, top1_id = tf.math.top_k(out,1);

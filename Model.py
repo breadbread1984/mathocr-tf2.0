@@ -55,8 +55,7 @@ class CoverageAttention(tf.keras.Model):
     def __init__(self, output_filters, kernel_size):
         
         super(CoverageAttention, self).__init__();
-        self.attn_history = None;
-        self.initial_alpha_shape = None;
+        self.attn_sum = 0;
         self.conv1 = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = kernel_size, padding = 'same');
         self.conv2 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
         self.conv3 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
@@ -65,19 +64,10 @@ class CoverageAttention(tf.keras.Model):
         self.softmax = tf.keras.layers.Softmax();
 
     @tf.function
-    def reset(self):
-        
-        if self.initial_alpha_shape is not None:
-            self.attn_history = tf.zeros(self.initial_alpha_shape); # a reference to attn
+    def call(self, inputs, pred, reset = False):
 
-    @tf.function
-    def call(self, inputs, pred):
-
-        if self.attn_history is None:
-            self.initial_alpha_shape = tuple(tf.shape(inputs)[:3]) + (1,);
-            self.reset();
         # attn_prev.shape = (batch, input height, input width, output_filters)
-        attn_prev = self.conv1(tf.math.reduce_sum(self.attn_history, axis = -1, keepdims = True));
+        attn_prev = tf.cond(tf.equal(reset,True),lambda: self.conv1(tf.zeros_like(inputs[...,0:1])),lambda: self.conv1(self.attn_sum));
         # prev.shape = (batch, input_height, input_width, 512)
         prev = self.conv2(attn_prev);
         # current.shape = (batch, input_height, input_width, 512)
@@ -92,7 +82,7 @@ class CoverageAttention(tf.keras.Model):
         attn = self.softmax(self.flatten(e_t), axis = 1);
         # attn.shape = (batch, input_height, input_width, 1)
         attn = tf.reshape(attn, (-1, tf.shape(inputs)[1], tf.shape(inputs)[2], 1));
-        self.attn_history = tf.concat([self.attn_history,attn], axis = -1);
+        self.attn_sum = tf.cond(tf.equal(reset,True),lambda:attn,lambda:tf.math.add(self.attn_sum, attn));
         # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
         weighted_inputs = attn * inputs;
         # context.shape = (batch, input_filters)
@@ -130,27 +120,25 @@ class Decoder(tf.keras.Model):
         self.maxout = Maxout(2);
         
     @tf.function
-    def call(self, inputs, low_res, high_res, hidden = None):
+    def call(self, inputs, low_res, high_res, hidden = None, reset = False):
         
         tf.Assert(tf.equal(tf.shape(inputs)[1],1),[tf.shape(inputs)]);
-        # if no hidden status of previous step is provided
-        # reset status of GRU.
-        if hidden is None:
-            self.coverage_attn_low.reset();
-            self.coverage_attn_high.reset();
-            hidden = tf.zeros((tf.shape(inputs)[0], self.gru1.units));
         # inputs.shape = (batch, seq_length = 1)
         # embedded.shape = (batch, seq_length = 1,embedding size = 256)
         # hidden.shape = (batch, hidden size = 256)
         embedded = self.embedding(inputs);
         # pred.shape = (batch, hidden size = 256)
-        pred = self.gru1(embedded, initial_state = hidden);
+        pred = tf.cond(
+            tf.equal(reset,True),
+            lambda:self.gru1(embedded, initial_state = tf.zeros((tf.shape(inputs)[0], self.gru1.units))),
+            lambda:self.gru1(embedded, initial_state = hidden)
+        );
         # u_pred.shape = (batch, 512)
         u_pred = self.dense1(pred);
         # context_low.shape = (batch, 512)
-        context_low = self.coverage_attn_low(low_res, u_pred);
+        context_low = self.coverage_attn_low(low_res, u_pred, reset);
         # context_high.shape = (batch, 512)
-        context_high = self.coverage_attn_high(high_res, u_pred);
+        context_high = self.coverage_attn_high(high_res, u_pred, reset);
         # context.shape = (batch,seq_length = 1, 1024)
         context = tf.expand_dims(tf.concat([context_low,context_high], axis = -1), axis = 1);
         # new_hidden.shape = (batch, hidden size = 256)
