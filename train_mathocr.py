@@ -84,7 +84,7 @@ def main():
                 # context tensors
                 hidden = None;
                 sequence = tf.ones((batch_num,1)) * token_to_id[START];
-                decoded_values = tf.TensorArray(dtype = tf.float32);
+                decoded_values = tf.TensorArray(dtype = tf.float32, size = tokens_length_max - 1);
                 # encode the input image
                 low_res, high_res = encoder(data);
                 # decode into a sequence of tokens
