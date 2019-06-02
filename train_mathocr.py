@@ -5,7 +5,7 @@ import pickle;
 import tensorflow as tf;
 from Model import Encoder, Decoder;
 
-batch_num = 100;
+batch_num = 64;
 tokens_length_max = 90;
 START = "<SOS>";
 END = "<EOS>";

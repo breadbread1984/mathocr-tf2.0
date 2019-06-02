@@ -103,6 +103,7 @@ class Maxout(tf.keras.Model):
     
     def __init__(self, pool_size):
         
+        super(Maxout, self).__init__();
         self.pool_size = pool_size;
         
     @tf.function
@@ -160,7 +161,7 @@ class Decoder(tf.keras.Model):
         # w_c.shape = (batch, embedding size = 256)
         w_c = self.dense3(context);
         # out.shape = (batch, embedding size = 256)
-        out = tf.squeeze(embedded, axis = 1) +_w_s + w_c;
+        out = tf.squeeze(embedded, axis = 1) + w_s + w_c;
         # out.shape = (batch, 128)
         out = self.maxout(out);
         # out.shape = (batch, num classes)
