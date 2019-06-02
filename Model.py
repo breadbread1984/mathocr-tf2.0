@@ -109,7 +109,7 @@ class Maxout(tf.keras.Model):
     def call(self, inputs):
     
         results = tf.keras.layers.Reshape(tuple(tf.shape(inputs)[:-1]) + (tf.shape(inputs)[-1] // self.pool_size, self.pool_size))(inputs);
-        results = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1));
+        results = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(results);
         return results;
 
 class Decoder(tf.keras.Model):
