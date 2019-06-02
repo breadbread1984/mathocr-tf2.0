@@ -132,14 +132,13 @@ class Decoder(tf.keras.Model):
     @tf.function
     def call(self, inputs, low_res, high_res, hidden = None):
         
-        assert tf.shape(inputs)[1] == 1;
+        tf.Assert(tf.equal(tf.shape(inputs)[1],1),[tf.shape(inputs)]);
         # if no hidden status of previous step is provided
         # reset status of GRU.
         if hidden is None:
             self.coverage_attn_low.reset();
             self.coverage_attn_high.reset();
-            self.gru1.reset_states();
-            self.gru2.reset_states();
+            hidden = tf.zeros((tf.shape(inputs)[0], self.gru1.units));
         # inputs.shape = (batch, seq_length = 1)
         # embedded.shape = (batch, seq_length = 1,embedding size = 256)
         # hidden.shape = (batch, hidden size = 256)

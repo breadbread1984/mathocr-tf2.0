@@ -93,7 +93,7 @@ def main():
                     # previous.shape = (batch, 1)
                     previous = tf.cond(
                         tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
-                        lambda: tokens[:,i], lambda: sequence[:,-1]
+                        lambda: tokens[:,i:i+1], lambda: sequence[:,-1:]
                     );
                     # predict current token
                     out, hidden = tf.cond(
