@@ -61,7 +61,7 @@ def main():
     assert len(token_to_id) == len(id_to_token);
     # networks
     encoder = Encoder((128,128,1));
-    decoder = Decoder(len(token_to_id));
+    decoder = Decoder((batch_num, 128, 128, 1),len(token_to_id));
     # load dataset
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).batch(batch_num);
@@ -127,7 +127,7 @@ def main():
     #save the network structure with weights
     encoder.save('encoder.h5');
     decoder.save('decoder.h5');
-                    
+
 if __name__ == "__main__":
 
     assert tf.executing_eagerly();

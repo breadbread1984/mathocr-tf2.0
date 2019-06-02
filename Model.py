@@ -4,6 +4,7 @@ import tensorflow as tf;
 
 def Bottleneck(input_shape, growth_rate, dropout_rate = 0.2):
     
+    # dimension of output is the same as input's
     inputs = tf.keras.Input(shape = input_shape);
     results = tf.keras.layers.BatchNormalization()(inputs);
     results = tf.keras.layers.ReLU()(results);
@@ -17,6 +18,7 @@ def Bottleneck(input_shape, growth_rate, dropout_rate = 0.2):
 
 def Transition(input_shape, output_filters):
     
+    # h,w of output = 1/2 h, 1/2 w of input's
     inputs = tf.keras.Input(shape = input_shape);
     results = tf.keras.layers.BatchNormalization()(inputs);
     results = tf.keras.layers.ReLU()(results);
@@ -26,6 +28,7 @@ def Transition(input_shape, output_filters):
 
 def BottleneckArray(input_shape, growth_rate, depth, dropout_rate = 0.2):
     
+    # dimension of output is the same as input's
     inputs = tf.keras.Input(shape = input_shape);
     results = inputs;
     for i in range(depth):
@@ -34,17 +37,22 @@ def BottleneckArray(input_shape, growth_rate, depth, dropout_rate = 0.2):
 
 def Encoder(input_shape, output_filters = 48, dropout_rate = 0.2):
     
+    # h,w of outA(low_res) = 1/16 h, 1/16 w of input's
+    # h,w of outB(high_res) = 1/8 h, 1/8 w of input's
     inputs = tf.keras.Input(shape = input_shape);
     results = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = (7,7), strides = (2,2), padding = 'same', use_bias = False)(inputs);
     results = tf.keras.layers.BatchNormalization()(results);
     results = tf.keras.layers.ReLU()(results);
+    # height and width are halved
     results = tf.keras.layers.MaxPool2D(pool_size = (2,2), strides = (2,2))(results);
     results = BottleneckArray(results.shape[1:], growth_rate = 24, depth = 16, dropout_rate = dropout_rate)(results);
+    # height and width are halved
     results = Transition(results.shape[1:], results.shape[-1] // 2)(results);
     results = BottleneckArray(results.shape[1:], growth_rate = 24, depth = 16, dropout_rate = dropout_rate)(results);
     results = tf.keras.layers.BatchNormalization()(results);
     before_trans2 = tf.keras.layers.ReLU()(results);
     results = tf.keras.layers.Conv2D(filters = before_trans2.shape[-1] // 2, kernel_size = (1,1), use_bias = False)(before_trans2);
+    # height and width are halved
     results = tf.keras.layers.AveragePooling2D(pool_size = (2,2), strides = (2,2))(results);
     outA = BottleneckArray(results.shape[1:], growth_rate = 24, depth = 16, dropout_rate = dropout_rate)(results);
     outB = BottleneckArray(before_trans2.shape[1:], growth_rate = 24, depth = 8, dropout_rate = dropout_rate)(before_trans2);
@@ -52,10 +60,10 @@ def Encoder(input_shape, output_filters = 48, dropout_rate = 0.2):
 
 class CoverageAttention(tf.keras.Model):
 
-    def __init__(self, output_filters, kernel_size):
+    def __init__(self, attn_shape, output_filters, kernel_size):
         
         super(CoverageAttention, self).__init__();
-        self.attn_sum = 0;
+        self.attn_sum = tf.zeros(attn_shape);
         self.conv1 = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = kernel_size, padding = 'same');
         self.conv2 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
         self.conv3 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
@@ -67,7 +75,11 @@ class CoverageAttention(tf.keras.Model):
     def call(self, inputs, pred, reset = False):
 
         # attn_prev.shape = (batch, input height, input width, output_filters)
-        attn_prev = tf.cond(tf.equal(reset,True),lambda: self.conv1(tf.zeros_like(inputs[...,0:1])),lambda: self.conv1(self.attn_sum));
+        attn_prev = tf.cond(
+            tf.equal(reset,True),
+            lambda: self.conv1(tf.zeros_like(inputs[...,0:1])),
+            lambda: self.conv1(self.attn_sum)
+        );
         # prev.shape = (batch, input_height, input_width, 512)
         prev = self.conv2(attn_prev);
         # current.shape = (batch, input_height, input_width, 512)
@@ -79,10 +91,14 @@ class CoverageAttention(tf.keras.Model):
         # e_t.shape = (batch, input_height, input_width, 1)
         e_t = self.conv4(response);
         # attn.shape = (batch, input_height * input_width)
-        attn = self.softmax(self.flatten(e_t), axis = 1);
+        attn = self.softmax(self.flatten(e_t));
         # attn.shape = (batch, input_height, input_width, 1)
         attn = tf.reshape(attn, (-1, tf.shape(inputs)[1], tf.shape(inputs)[2], 1));
-        self.attn_sum = tf.cond(tf.equal(reset,True),lambda:attn,lambda:tf.math.add(self.attn_sum, attn));
+        self.attn_sum = tf.cond(
+            tf.equal(reset,True),
+            lambda: attn,
+            lambda: tf.math.add(self.attn_sum, attn)
+        );
         # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
         weighted_inputs = attn * inputs;
         # context.shape = (batch, input_filters)
@@ -105,7 +121,7 @@ class Maxout(tf.keras.Model):
 
 class Decoder(tf.keras.Model):
     
-    def __init__(self, num_classes, embedding_dim = 256, hidden_size = 256):
+    def __init__(self, input_shape, num_classes, embedding_dim = 256, hidden_size = 256):
         
         super(Decoder,self).__init__();
         self.embedding = tf.keras.layers.Embedding(input_dim = num_classes, output_dim = embedding_dim);
@@ -115,8 +131,9 @@ class Decoder(tf.keras.Model):
         self.dense2 = tf.keras.layers.Dense(units = embedding_dim, use_bias = False);
         self.dense3 = tf.keras.layers.Dense(units = embedding_dim, use_bias = False);
         self.dense4 = tf.keras.layers.Dense(units = num_classes, use_bias = False);
-        self.coverage_attn_low = CoverageAttention(output_filters = 256, kernel_size = (11,11));
-        self.coverage_attn_high = CoverageAttention(output_filters = 256, kernel_size = (7,7));
+        input_shape = tf.convert_to_tensor(input_shape);
+        self.coverage_attn_low = CoverageAttention(input_shape // (1, 16, 16, input_shape[-1]), output_filters = 256, kernel_size = (11,11));
+        self.coverage_attn_high = CoverageAttention(input_shape // (1, 8, 8, input_shape[-1]), output_filters = 256, kernel_size = (7,7));
         self.maxout = Maxout(2);
         
     @tf.function
@@ -159,4 +176,4 @@ if __name__ == "__main__":
     
     assert tf.executing_eagerly();
     encoder = Encoder((256,256,1));
-    decoder = Decoder(100);
+    decoder = Decoder((10,128,128,3), 100);
