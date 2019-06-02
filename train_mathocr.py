@@ -65,13 +65,16 @@ def main():
     # load dataset
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).batch(batch_num);
-    # log utilities
-    avg_loss = tf.keras.metrics.Mean(name = 'loss', dtype = tf.float32);
-    log = tf.summary.create_file_writer('checkpoints');
     # checkpoints utilities
     optimizer = tf.keras.optimizers.Adam(1e-3);
-    if False == os.path.exists('checkpoints'): os.mkdir('checkpoints');
-    checkpoints = tf.train.Checkpoint(mode = )
+    if False == os.path.exists('checkpoint'): os.mkdir('checkpoint');
+    encoder_checkpoint = tf.train.Checkpoint(mode = encoder, optimizer = optimizer, optimizer_step = optimizer.iterations);
+    decoder_checkpoint = tf.train.Checkpoint(mode = decocer, optimizer = optimizer, optimizer_step = optimizer.iterations);
+    encoder_checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
+    decoder_checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
+    # log utilities
+    avg_loss = tf.keras.metrics.Mean(name = 'loss', dtype = tf.float32);
+    log = tf.summary.create_file_writer('checkpoint');
     while True:
         # data.shape = (batch, 128, 128, 1)
         # tokens.shape = (batch, tokens_length_max = 90)
@@ -108,8 +111,21 @@ def main():
                 expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
                 # get loss
                 loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(decoded, expected);
-                avg_loss.update_state(loss);
-                if tf.equal(optimizer)
+            avg_loss.update_state(loss);
+            if tf.equal(optimizer.iterations % 100, 0):
+                with log.as_default():
+                    tf.summary.scalar('loss',avg_loss.result(), step = optimizer.iterations);
+                print('Step #%d Loss: %.6f' % (optimizer.iterations, avg_loss.result()));
+                avg_loss.reset_states();
+            grads = tape.gradient(loss, encoder.trainable_variables + decoder.trainable_variables);
+            optimizer.apply_gradients(zip(grads, encoder.trainable_variables + decoder.trainable_variables));
+        # save model every epoch
+        encoder_checkpoint.save(os.path.join('checkpoint','encoder_ckpt'));
+        decoder_checkpoint.save(os.path.join('checkpoint','decoder_ckpt'));
+        if loss < 0.01: break;
+    #save the network structure with weights
+    encoder.save('encoder.h5');
+    decoder.save('decoder.h5');
                     
 if __name__ == "__main__":
 
