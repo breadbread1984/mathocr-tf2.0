@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import pickle;
 import tensorflow as tf;
 
 def Bottleneck(input_shape, growth_rate, dropout_rate = 0.2):
@@ -142,10 +143,95 @@ class Decoder(tf.keras.Model):
         out = tf.math.reduce_max(out, axis = -1);
         # out.shape = (batch, num classes)
         out = self.dense4(out);
-        return out, (new_hidden, new_attn_sum_low, new_attn_sum_high);
+        new_context = (new_hidden, new_attn_sum_low, new_attn_sum_high)
+        return out, new_context;
+
+class MathOCR(tf.keras.Model):
+    
+    START = "<SOS>";
+    END = "<EOS>";
+    PAD = "<PAD>";
+    SPECIAL_TOKENS = [START, END, PAD];
+    
+    def __init__(self, input_shape, output_filters = 48, dropout_rate = 0.2, embedding_dim = 256, hidden_size = 256, tokens_length_max = 90):
+        
+        super(MathOCR, self).__init__();
+        with open('token_id_map.dat','rb') as f:
+            self.token_to_id = pickle.load(f);
+            self.id_to_token = pickle.load(f);
+        assert len(self.token_to_id) == len(self.id_to_token);
+        self.hidden_size = hidden_size;
+        self.tokens_length_max = tokens_length_max;
+        self.encoder = Encoder(input_shape, output_filters = output_filters, dropout_rate = dropout_rate);
+        self.decoder = Decoder(len(self.token_to_id), embedding_dim = embedding_dim, hidden_size = hidden_size);
+        
+    @tf.function
+    def call(self, image):
+        
+        img_shape = tf.shape(image);
+        batch_num = img_shape[0];
+        # context tensors
+        context = (
+            tf.zeros((batch_num, self.hidden_size)), 
+            tf.zeros(img_shape // (1, 16, 16, img_shape[-1])),
+            tf.zeros(img_shape // (1, 8, 8, img_shape[-1]))
+        );
+        sequence = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
+        decoded_values = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1);
+        # encode the input image
+        low_res, high_res = self.encoder(image);
+        # decode into a sequence of tokens
+        for i in tf.range(self.tokens_length_max - 1):
+            # random choose whether the previous token is from prediction or from ground truth
+            # previous.shape = (batch, 1)
+            previous = sequence[:,-1:];
+            # predict current token
+            out, context = self.decoder(previous, low_res, high_res, context = context);
+            # token id = (batch, 1)
+            _, top1_id = tf.math.top_k(out,1);
+            # append token id
+            sequence = tf.concat([sequence, tf.cast(top1_id, dtype = tf.int64)], axis = -1);
+            # append logits
+            decoded_values.write(i, out);
+        # decoded.shape = (batch, seq_length = 89, num_classes)
+        decoded = tf.transpose(decoded_values.stack(), perm = (1,0,2));
+        return decoded, sequence;
+
+    def train(self, image, tokens):
+        
+        img_shape = tf.shape(image);
+        batch_num = img_shape[0];
+        # context tensors
+        context = (
+            tf.zeros((batch_num, self.hidden_size)), 
+            tf.zeros(img_shape // (1, 16, 16, img_shape[-1])),
+            tf.zeros(img_shape // (1, 8, 8, img_shape[-1]))
+        );
+        sequence = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
+        decoded_values = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1);
+        # encode the input image
+        low_res, high_res = self.encoder(image);
+        # decode into a sequence of tokens
+        for i in tf.range(self.tokens_length_max - 1):
+            # random choose whether the previous token is from prediction or from ground truth
+            # previous.shape = (batch, 1)
+            previous = tf.cond(
+                tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
+                lambda: tokens[:,i:i+1], lambda: sequence[:,-1:]
+            );
+            # predict current token
+            out, context = self.decoder(previous, low_res, high_res, context = context);
+            # token id = (batch, 1)
+            _, top1_id = tf.math.top_k(out,1);
+            # append token id
+            sequence = tf.concat([sequence, tf.cast(top1_id, dtype = tf.int64)], axis = -1);
+            # append logits
+            decoded_values.write(i, out);
+        # decoded.shape = (batch, seq_length = 89, num_classes)
+        decoded = tf.transpose(decoded_values.stack(), perm = (1,0,2));
+        return decoded, sequence;
 
 if __name__ == "__main__":
     
     assert tf.executing_eagerly();
-    encoder = Encoder((256,256,1));
-    decoder = Decoder(100);
+    mathocr = MathOCR((256,256,1));

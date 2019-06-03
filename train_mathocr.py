@@ -3,9 +3,9 @@
 import os;
 import pickle;
 import tensorflow as tf;
-from Model import Encoder, Decoder;
+from Model import MathOCR;
 
-batch_num = 64;
+batch_num = 8;
 tokens_length_max = 90;
 START = "<SOS>";
 END = "<EOS>";
@@ -54,79 +54,42 @@ def parse_function_generator(pad_code, crop = True, transform = True):
 
 def main():
     
-    # load token
-    with open('token_id_map.dat','rb') as f:
-        token_to_id = pickle.load(f);
-        id_to_token = pickle.load(f);
-    assert len(token_to_id) == len(id_to_token);
     # networks
-    encoder = Encoder((128,128,1));
-    decoder = Decoder(len(token_to_id));
+    mathocr = MathOCR((128,128,1),tokens_length_max = tokens_length_max);
     # load dataset
-    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
-    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).batch(batch_num);
+    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
+    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).batch(batch_num);
     # checkpoints utilities
     optimizer = tf.keras.optimizers.Adam(1e-3);
-    if False == os.path.exists('encoder_checkpoint'): os.mkdir('encoder_checkpoint');
-    if False == os.path.exists('decoder_checkpoint'): os.mkdir('decoder_checkpoint');
-    encoder_checkpoint = tf.train.Checkpoint(mode = encoder, optimizer = optimizer, optimizer_step = optimizer.iterations);
-    decoder_checkpoint = tf.train.Checkpoint(mode = decoder, optimizer = optimizer, optimizer_step = optimizer.iterations);
-    encoder_checkpoint.restore(tf.train.latest_checkpoint('encoder_checkpoint'));
-    decoder_checkpoint.restore(tf.train.latest_checkpoint('decoder_checkpoint'));
+    if False == os.path.exists('checkpoint'): os.mkdir('checkpoint');
+    checkpoint = tf.train.Checkpoint(mode = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
+    checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
     # log utilities
     avg_loss = tf.keras.metrics.Mean(name = 'loss', dtype = tf.float32);
-    log = tf.summary.create_file_writer('log');
+    log = tf.summary.create_file_writer('checkpoint');
     while True:
         # data.shape = (batch, 128, 128, 1)
         # tokens.shape = (batch, tokens_length_max = 90)
         for data, tokens in trainset:
             with tf.GradientTape() as tape:
-                # context tensors
-                context = (
-                    tf.zeros((batch_num, 256)), 
-                    tf.zeros(tf.shape(data) // (1, 16, 16, tf.shape(data)[-1])),
-                    tf.zeros(tf.shape(data) // (1, 8, 8, tf.shape(data)[-1]))
-                );
-                sequence = tf.ones((batch_num,1), dtype = tf.int32) * token_to_id[START];
-                decoded_values = tf.TensorArray(dtype = tf.float32, size = tokens_length_max - 1);
-                # encode the input image
-                low_res, high_res = encoder(data);
-                # decode into a sequence of tokens
-                for i in tf.range(tokens_length_max - 1):
-                    # random choose whether the previous token is from prediction or from ground truth
-                    # previous.shape = (batch, 1)
-                    previous = tf.cond(
-                        tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
-                        lambda: tokens[:,i:i+1], lambda: sequence[:,-1:]
-                    );
-                    # predict current token
-                    out, context = decoder(previous, low_res, high_res, context = context);
-                    # top1_id.shape = (batch, 1)
-                    _, top1_id = tf.math.top_k(out,1);
-                    # append sequence
-                    sequence = tf.concat([sequence, top1_id], axis = -1);
-                    decoded_values.write(i, out);
-                # decoded.shape = (batch, seq_length = 89, num_classes)
-                decoded = tf.transpose(decoded_values.stack(), perm = (0,2,1));
+                logits, token_id_seq = mathocr.train(data, tokens);
                 # skip the first start token, only use the following ground truth values
-                expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+                expected = tf.cast(tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1)), dtype = tf.float32);
                 # get loss
-                loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(decoded, expected);
+                loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(logits, expected);
             avg_loss.update_state(loss);
             if tf.equal(optimizer.iterations % 100, 0):
                 with log.as_default():
                     tf.summary.scalar('loss',avg_loss.result(), step = optimizer.iterations);
                 print('Step #%d Loss: %.6f' % (optimizer.iterations, avg_loss.result()));
                 avg_loss.reset_states();
-            grads = tape.gradient(loss, encoder.trainable_variables + decoder.trainable_variables);
-            optimizer.apply_gradients(zip(grads, encoder.trainable_variables + decoder.trainable_variables));
+            grads = tape.gradient(loss, mathocr.trainable_variables);
+            optimizer.apply_gradients(zip(grads, mathocr.trainable_variables));
         # save model every epoch
-        encoder_checkpoint.save(os.path.join('encoder_checkpoint','ckpt'));
-        decoder_checkpoint.save(os.path.join('decoder_checkpoint','ckpt'));
+        checkpoint.save(os.path.join('checkpoint','ckpt'));
         if loss < 0.01: break;
     #save the network structure with weights
-    encoder.save('encoder.h5');
-    decoder.save('decoder.h5');
+    mathocr.save('mathocr.h5');
 
 if __name__ == "__main__":
 
