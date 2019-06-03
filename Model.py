@@ -60,10 +60,9 @@ def Encoder(input_shape, output_filters = 48, dropout_rate = 0.2):
 
 class CoverageAttention(tf.keras.Model):
 
-    def __init__(self, attn_shape, output_filters, kernel_size):
+    def __init__(self, output_filters, kernel_size):
         
         super(CoverageAttention, self).__init__();
-        self.attn_sum = tf.zeros(attn_shape);
         self.conv1 = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = kernel_size, padding = 'same');
         self.conv2 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
         self.conv3 = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False);
@@ -72,14 +71,10 @@ class CoverageAttention(tf.keras.Model):
         self.softmax = tf.keras.layers.Softmax();
 
     @tf.function
-    def call(self, inputs, pred, reset = False):
+    def call(self, inputs, pred, attn_sum):
 
         # attn_prev.shape = (batch, input height, input width, output_filters)
-        attn_prev = tf.cond(
-            tf.equal(reset,True),
-            lambda: self.conv1(tf.zeros_like(inputs[...,0:1])),
-            lambda: self.conv1(self.attn_sum)
-        );
+        attn_prev = self.conv1(attn_sum);
         # prev.shape = (batch, input_height, input_width, 512)
         prev = self.conv2(attn_prev);
         # current.shape = (batch, input_height, input_width, 512)
@@ -94,16 +89,12 @@ class CoverageAttention(tf.keras.Model):
         attn = self.softmax(self.flatten(e_t));
         # attn.shape = (batch, input_height, input_width, 1)
         attn = tf.reshape(attn, (-1, tf.shape(inputs)[1], tf.shape(inputs)[2], 1));
-        self.attn_sum = tf.cond(
-            tf.equal(reset,True),
-            lambda: attn,
-            lambda: tf.math.add(self.attn_sum, attn)
-        );
+        new_attn_sum = attn_sum + attn;
         # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
         weighted_inputs = attn * inputs;
         # context.shape = (batch, input_filters)
         context = tf.math.reduce_sum(weighted_inputs, axis = [1,2]);
-        return context;
+        return context, new_attn_sum;
 
 class Maxout(tf.keras.Model):
     
@@ -115,13 +106,13 @@ class Maxout(tf.keras.Model):
     @tf.function
     def call(self, inputs):
     
-        results = tf.keras.layers.Reshape(tuple(tf.shape(inputs)[:-1]) + (tf.shape(inputs)[-1] // self.pool_size, self.pool_size))(inputs);
+        results = tf.keras.layers.Reshape((tf.shape(inputs)[0], tf.shape(inputs)[1] // self.pool_size, self.pool_size))(inputs);
         results = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(results);
         return results;
 
 class Decoder(tf.keras.Model):
     
-    def __init__(self, input_shape, num_classes, embedding_dim = 256, hidden_size = 256):
+    def __init__(self, num_classes, embedding_dim = 256, hidden_size = 256):
         
         super(Decoder,self).__init__();
         self.embedding = tf.keras.layers.Embedding(input_dim = num_classes, output_dim = embedding_dim);
@@ -131,13 +122,12 @@ class Decoder(tf.keras.Model):
         self.dense2 = tf.keras.layers.Dense(units = embedding_dim, use_bias = False);
         self.dense3 = tf.keras.layers.Dense(units = embedding_dim, use_bias = False);
         self.dense4 = tf.keras.layers.Dense(units = num_classes, use_bias = False);
-        input_shape = tf.convert_to_tensor(input_shape);
-        self.coverage_attn_low = CoverageAttention(input_shape // (1, 16, 16, input_shape[-1]), output_filters = 256, kernel_size = (11,11));
-        self.coverage_attn_high = CoverageAttention(input_shape // (1, 8, 8, input_shape[-1]), output_filters = 256, kernel_size = (7,7));
+        self.coverage_attn_low = CoverageAttention(output_filters = 256, kernel_size = (11,11));
+        self.coverage_attn_high = CoverageAttention(output_filters = 256, kernel_size = (7,7));
         self.maxout = Maxout(2);
         
     @tf.function
-    def call(self, inputs, low_res, high_res, hidden = None, reset = False):
+    def call(self, inputs, low_res, high_res, context = (None,None,None), reset = False):
         
         tf.Assert(tf.equal(tf.shape(inputs)[1],1),[tf.shape(inputs)]);
         # inputs.shape = (batch, seq_length = 1)
@@ -145,17 +135,28 @@ class Decoder(tf.keras.Model):
         # hidden.shape = (batch, hidden size = 256)
         embedded = self.embedding(inputs);
         # pred.shape = (batch, hidden size = 256)
-        pred = tf.cond(
+        hidden = tf.cond(
             tf.equal(reset,True),
-            lambda:self.gru1(embedded, initial_state = tf.zeros((tf.shape(inputs)[0], self.gru1.units))),
-            lambda:self.gru1(embedded, initial_state = hidden)
+            lambda: tf.zeros((tf.shape(inputs)[0], self.gru1.units)),
+            lambda: context[0]
         );
+        pred = self.gru1(embedded, initial_state = hidden);
         # u_pred.shape = (batch, 512)
         u_pred = self.dense1(pred);
         # context_low.shape = (batch, 512)
-        context_low = self.coverage_attn_low(low_res, u_pred, reset);
+        attn_sum_low = tf.cond(
+            tf.equal(reset,True),
+            lambda: tf.zeros(tf.shape(inputs) // (1, 16, 16, tf.shape(inputs)[-1])),
+            lambda: context[1]
+        );
+        context_low, new_attn_sum_low = self.coverage_attn_low(low_res, u_pred, attn_sum_low);
         # context_high.shape = (batch, 512)
-        context_high = self.coverage_attn_high(high_res, u_pred, reset);
+        attn_sum_high = tf.cond(
+            tf.equal(reset,True),
+            lambda: tf.zeros(tf.shape(inputs) // (1, 8, 8, tf.shape(inputs)[-1])),
+            lambda: context[2]
+        );
+        context_high, new_attn_sum_high = self.coverage_attn_high(high_res, u_pred, attn_sum_high);
         # context.shape = (batch,seq_length = 1, 1024)
         context = tf.expand_dims(tf.concat([context_low,context_high], axis = -1), axis = 1);
         # new_hidden.shape = (batch, hidden size = 256)
@@ -170,10 +171,10 @@ class Decoder(tf.keras.Model):
         out = self.maxout(out);
         # out.shape = (batch, num classes)
         out = self.dense4(out);
-        return out, new_hidden;
+        return out, (new_hidden, new_attn_sum_low, new_attn_sum_high);
 
 if __name__ == "__main__":
     
     assert tf.executing_eagerly();
     encoder = Encoder((256,256,1));
-    decoder = Decoder((10,128,128,3), 100);
+    decoder = Decoder(100);

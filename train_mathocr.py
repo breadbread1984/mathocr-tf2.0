@@ -61,7 +61,7 @@ def main():
     assert len(token_to_id) == len(id_to_token);
     # networks
     encoder = Encoder((128,128,1));
-    decoder = Decoder((batch_num, 128, 128, 1),len(token_to_id));
+    decoder = Decoder(len(token_to_id));
     # load dataset
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(token_to_id[PAD], True, True)).batch(batch_num);
@@ -82,7 +82,7 @@ def main():
         for data, tokens in trainset:
             with tf.GradientTape() as tape:
                 # context tensors
-                hidden = None;
+                context = (None, None, None);
                 sequence = tf.ones((batch_num,1)) * token_to_id[START];
                 decoded_values = tf.TensorArray(dtype = tf.float32, size = tokens_length_max - 1);
                 # encode the input image
@@ -96,10 +96,10 @@ def main():
                         lambda: tokens[:,i:i+1], lambda: sequence[:,-1:]
                     );
                     # predict current token
-                    out, hidden = tf.cond(
+                    out, context = tf.cond(
                         tf.equal(i,0),
                         lambda:decoder(previous, low_res, high_res, reset = True),
-                        lambda:decoder(previous, low_res, high_res, hidden = hidden)
+                        lambda:decoder(previous, low_res, high_res, context = context)
                     );
                     # top1_id.shape = (batch, 1)
                     _, top1_id = tf.math.top_k(out,1);
