@@ -96,20 +96,6 @@ class CoverageAttention(tf.keras.Model):
         context = tf.math.reduce_sum(weighted_inputs, axis = [1,2]);
         return context, new_attn_sum;
 
-class Maxout(tf.keras.Model):
-    
-    def __init__(self, pool_size):
-        
-        super(Maxout, self).__init__();
-        self.pool_size = pool_size;
-        
-    @tf.function
-    def call(self, inputs):
-    
-        results = tf.keras.layers.Reshape((tf.shape(inputs)[0], tf.shape(inputs)[1] // self.pool_size, self.pool_size))(inputs);
-        results = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(results);
-        return results;
-
 class Decoder(tf.keras.Model):
     
     def __init__(self, num_classes, embedding_dim = 256, hidden_size = 256):
@@ -124,10 +110,9 @@ class Decoder(tf.keras.Model):
         self.dense4 = tf.keras.layers.Dense(units = num_classes, use_bias = False);
         self.coverage_attn_low = CoverageAttention(output_filters = 256, kernel_size = (11,11));
         self.coverage_attn_high = CoverageAttention(output_filters = 256, kernel_size = (7,7));
-        self.maxout = Maxout(2);
         
     @tf.function
-    def call(self, inputs, low_res, high_res, context = (None,None,None), reset = False):
+    def call(self, inputs, low_res, high_res, context):
         
         tf.Assert(tf.equal(tf.shape(inputs)[1],1),[tf.shape(inputs)]);
         # inputs.shape = (batch, seq_length = 1)
@@ -135,32 +120,17 @@ class Decoder(tf.keras.Model):
         # hidden.shape = (batch, hidden size = 256)
         embedded = self.embedding(inputs);
         # pred.shape = (batch, hidden size = 256)
-        hidden = tf.cond(
-            tf.equal(reset,True),
-            lambda: tf.zeros((tf.shape(inputs)[0], self.gru1.units)),
-            lambda: context[0]
-        );
-        pred = self.gru1(embedded, initial_state = hidden);
+        pred = self.gru1(embedded, initial_state = context[0]);
         # u_pred.shape = (batch, 512)
         u_pred = self.dense1(pred);
         # context_low.shape = (batch, 512)
-        attn_sum_low = tf.cond(
-            tf.equal(reset,True),
-            lambda: tf.zeros(tf.shape(inputs) // (1, 16, 16, tf.shape(inputs)[-1])),
-            lambda: context[1]
-        );
-        context_low, new_attn_sum_low = self.coverage_attn_low(low_res, u_pred, attn_sum_low);
+        context_low, new_attn_sum_low = self.coverage_attn_low(low_res, u_pred, context[1]);
         # context_high.shape = (batch, 512)
-        attn_sum_high = tf.cond(
-            tf.equal(reset,True),
-            lambda: tf.zeros(tf.shape(inputs) // (1, 8, 8, tf.shape(inputs)[-1])),
-            lambda: context[2]
-        );
-        context_high, new_attn_sum_high = self.coverage_attn_high(high_res, u_pred, attn_sum_high);
+        context_high, new_attn_sum_high = self.coverage_attn_high(high_res, u_pred, context[2]);
         # context.shape = (batch,seq_length = 1, 1024)
-        context = tf.expand_dims(tf.concat([context_low,context_high], axis = -1), axis = 1);
+        context = tf.concat([context_low,context_high], axis = -1);
         # new_hidden.shape = (batch, hidden size = 256)
-        new_hidden = self.gru2(context, initial_state = pred);
+        new_hidden = self.gru2(tf.expand_dims(context, axis = 1), initial_state = pred);
         # w_s.shape = (batch, embedding size = 256)
         w_s = self.dense2(new_hidden);
         # w_c.shape = (batch, embedding size = 256)
@@ -168,7 +138,8 @@ class Decoder(tf.keras.Model):
         # out.shape = (batch, embedding size = 256)
         out = tf.squeeze(embedded, axis = 1) + w_s + w_c;
         # out.shape = (batch, 128)
-        out = self.maxout(out);
+        out = tf.reshape(out, (-1, tf.shape(out)[-1] // 2, 2));
+        out = tf.math.reduce_max(out, axis = -1);
         # out.shape = (batch, num classes)
         out = self.dense4(out);
         return out, (new_hidden, new_attn_sum_low, new_attn_sum_high);

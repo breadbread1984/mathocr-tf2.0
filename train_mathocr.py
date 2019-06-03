@@ -82,8 +82,12 @@ def main():
         for data, tokens in trainset:
             with tf.GradientTape() as tape:
                 # context tensors
-                context = (None, None, None);
-                sequence = tf.ones((batch_num,1)) * token_to_id[START];
+                context = (
+                    tf.zeros((batch_num, 256)), 
+                    tf.zeros(tf.shape(data) // (1, 16, 16, tf.shape(data)[-1])),
+                    tf.zeros(tf.shape(data) // (1, 8, 8, tf.shape(data)[-1]))
+                );
+                sequence = tf.ones((batch_num,1), dtype = tf.int32) * token_to_id[START];
                 decoded_values = tf.TensorArray(dtype = tf.float32, size = tokens_length_max - 1);
                 # encode the input image
                 low_res, high_res = encoder(data);
@@ -96,16 +100,12 @@ def main():
                         lambda: tokens[:,i:i+1], lambda: sequence[:,-1:]
                     );
                     # predict current token
-                    out, context = tf.cond(
-                        tf.equal(i,0),
-                        lambda:decoder(previous, low_res, high_res, reset = True),
-                        lambda:decoder(previous, low_res, high_res, context = context)
-                    );
+                    out, context = decoder(previous, low_res, high_res, context = context);
                     # top1_id.shape = (batch, 1)
                     _, top1_id = tf.math.top_k(out,1);
                     # append sequence
                     sequence = tf.concat([sequence, top1_id], axis = -1);
-                    decoded_values.apend(i, out);
+                    decoded_values.write(i, out);
                 # decoded.shape = (batch, seq_length = 89, num_classes)
                 decoded = tf.transpose(decoded_values.stack(), perm = (0,2,1));
                 # skip the first start token, only use the following ground truth values
