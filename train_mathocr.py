@@ -89,7 +89,8 @@ def main():
         checkpoint.save(os.path.join('checkpoint','ckpt'));
         if loss < 0.01: break;
     #save the network structure with weights
-    mathocr.save('mathocr.h5');
+    mathocr.encoder.save('encoder.h5');
+    mathocr.decoder.save('decoder.h5');
 
 if __name__ == "__main__":
 
