@@ -75,7 +75,7 @@ def main():
             expected = tf.cast(tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1)), dtype = tf.float32);
             with tf.GradientTape() as tape:
                 logits, token_id_seq = mathocr.train(data, tokens);
-                loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(logits, expected);
+                loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(expected, logits);
             avg_loss.update_state(loss);
             if tf.equal(optimizer.iterations % 100, 0):
                 with log.as_default():
