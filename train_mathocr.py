@@ -55,7 +55,7 @@ def parse_function_generator(pad_code, crop = True, transform = True):
 def main():
     
     # networks
-    mathocr = MathOCR((128,128,1),tokens_length_max = tokens_length_max);
+    mathocr = MathOCR(tokens_length_max = tokens_length_max);
     # load dataset
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).batch(batch_num);
