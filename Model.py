@@ -73,7 +73,7 @@ def CoverageAttention(input_shape, pred_shape, attn_sum_shape, output_filters, k
     # nxt.shape = (batch, 1, 1, 512)
     nxt = tf.keras.layers.Lambda(lambda x: tf.expand_dims(tf.expand_dims(x, 1),1))(pred);
     # response.shape = (batch, input_height, input_width, 512)
-    nxt = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,tf.shape(inputs)[1],tf.shape(inputs)[2],1)))(nxt);
+    nxt = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,inputs.shape[1],inputs.shape[2],1)))(nxt);
     s = tf.keras.layers.Add()([nxt,current,prev]);
     response = tf.keras.layers.Lambda(lambda x: tf.math.tanh(x))(s);
     # e_t.shape = (batch, input_height, input_width, 1)
@@ -81,10 +81,10 @@ def CoverageAttention(input_shape, pred_shape, attn_sum_shape, output_filters, k
     # attn.shape = (batch, input_height * input_width)
     attn = tf.keras.layers.Softmax()(tf.keras.layers.Flatten()(e_t));
     # attn.shape = (batch, input_height, input_width, 1)
-    attn = tf.keras.layers.Reshape((tf.shape(inputs)[1], tf.shape(inputs)[2], 1))(attn);
+    attn = tf.keras.layers.Reshape((inputs.shape[1], inputs.shape[2], 1))(attn);
     new_attn_sum = tf.keras.layers.Add()([attn_sum, attn]);
     # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
-    attn = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,1,1,tf.shape(inputs)[-1])))(attn);
+    attn = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,1,1,inputs.shape[-1])))(attn);
     weighted_inputs = tf.keras.layers.Multiply()([attn, inputs]);
     # context.shape = (batch, input_filters)
     context = tf.keras.layers.Lambda(lambda x: tf.math.reduce_sum(x, axis = [1,2]))(weighted_inputs);
@@ -125,7 +125,7 @@ def Decoder(input_shape, low_res_shape, high_res_shape, hidden_shape, attn_sum_l
     embedded = tf.keras.layers.Lambda(lambda x: tf.squeeze(x, axis = 1))(embedded);
     out = tf.keras.layers.Add()([embedded, w_s, w_c]);
     # out.shape = (batch, 128)
-    out = tf.keras.layers.Reshape((tf.shape(out)[-1] // 2, 2))(out);
+    out = tf.keras.layers.Reshape((out.shape[-1] // 2, 2))(out);
     out = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(out);
     # out.shape = (batch, num classes)
     out = tf.keras.layers.Dense(units = num_classes, use_bias = False)(out);
@@ -168,10 +168,10 @@ class MathOCR(tf.keras.Model):
         attn_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]));
         
         # whole sequence of token id
-        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max);
+        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max, clear_after_read = False);
         token_id_sequence.write(0, tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START]);
         # decoded sequence without without head
-        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1);
+        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1, clear_after_read = False);
         # encode the input image
         low_res, high_res = self.encoder(image);
         i = tf.constant(0);
@@ -190,7 +190,8 @@ class MathOCR(tf.keras.Model):
             i = i + 1;
             return i, new_hidden, new_attn_sum_low, new_attn_sum_high;
             
-        tf.while_loop(tf.less(i,self.tokens_length_max - 1), step, [i, hidden, attn_sum_low, attn_sum_high]);
+        tf.while_loop(lambda i, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
+                      step, [i, hidden, attn_sum_low, attn_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
         logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
         token_id_sequence = tf.transpose(token_id_sequence.stack(), perm = (1,0,2));
@@ -206,10 +207,10 @@ class MathOCR(tf.keras.Model):
         attn_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]));
         
         # whole sequence of token id
-        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max);
+        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max, clear_after_read = False);
         token_id_sequence.write(0, tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START]);
         # decoded sequence without without head
-        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1);
+        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1, clear_after_read = False);
         # instance encoder
         if self.encoder == None: self.encoder = Encoder(image.shape[1:], output_filters = self.output_filters, dropout_rate = self.dropout_rate);
         # encode the input image
@@ -224,7 +225,7 @@ class MathOCR(tf.keras.Model):
                 lambda: tokens[:,i:i+1], lambda: token_id_sequence.read(i)
             );
             # predict current token
-            out, new_hidden, new_attn_sum_low, new_attn_sum_high = self.decoder(previous, low_res, high_res, hidden, attn_sum_low, attn_sum_high);
+            out, new_hidden, new_attn_sum_low, new_attn_sum_high = self.decoder([previous, low_res, high_res, hidden, attn_sum_low, attn_sum_high]);
             # token id = (batch, 1)
             _, top1_id = tf.math.top_k(out,1);
             # append token id
@@ -235,7 +236,8 @@ class MathOCR(tf.keras.Model):
             i = i + 1;
             return i, new_hidden, new_attn_sum_low, new_attn_sum_high;
             
-        tf.while_loop(tf.less(i,self.tokens_length_max - 1), step, [i, hidden, attn_sum_low, attn_sum_high]);
+        tf.while_loop(lambda i, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
+                      step, [i, hidden, attn_sum_low, attn_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
         logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
         token_id_sequence = tf.transpose(token_id_sequence.stack(), perm = (1,0,2));
