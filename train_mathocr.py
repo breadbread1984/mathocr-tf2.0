@@ -72,7 +72,8 @@ def main():
         # tokens.shape = (batch, tokens_length_max = 90)
         for data, tokens in trainset:
             # skip the first start token, only use the following ground truth values
-            expected = tf.cast(tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1)), dtype = tf.float32);
+            expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+            expected = tf.one_hot(expected, len(mathocr.token_to_id));
             with tf.GradientTape() as tape:
                 logits, token_id_seq = mathocr.train(data, tokens);
                 loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(expected, logits);
