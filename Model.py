@@ -71,7 +71,7 @@ def CoverageAttention(input_shape, pred_shape, attn_sum_shape, output_filters, k
     # current.shape = (batch, input_height, input_width, 512)
     current = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False)(inputs);
     # nxt.shape = (batch, 1, 1, 512)
-    nxt = tf.keras.layers.Lambda(lambda x: tf.expand_dims(tf.expand_dims(x, 1),1))(pred);
+    nxt = tf.keras.layers.Reshape((1,1,pred.shape[-1],))(pred);
     # response.shape = (batch, input_height, input_width, 512)
     nxt = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,inputs.shape[1],inputs.shape[2],1)))(nxt);
     s = tf.keras.layers.Add()([nxt,current,prev]);
@@ -81,7 +81,7 @@ def CoverageAttention(input_shape, pred_shape, attn_sum_shape, output_filters, k
     # attn.shape = (batch, input_height * input_width)
     attn = tf.keras.layers.Softmax()(tf.keras.layers.Flatten()(e_t));
     # attn.shape = (batch, input_height, input_width, 1)
-    attn = tf.keras.layers.Reshape((inputs.shape[1], inputs.shape[2], 1))(attn);
+    attn = tf.keras.layers.Reshape((inputs.shape[1], inputs.shape[2], 1,))(attn);
     new_attn_sum = tf.keras.layers.Add()([attn_sum, attn]);
     # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
     attn = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,1,1,inputs.shape[-1])))(attn);
@@ -112,20 +112,21 @@ def Decoder(input_shape, low_res_shape, high_res_shape, hidden_shape, attn_sum_l
     context_low, new_attn_sum_low = CoverageAttention(low_res.shape[1:], u_pred.shape[1:], attn_sum_low.shape[1:], output_filters = 256, kernel_size = (11,11))([low_res, u_pred, attn_sum_low]);
     # context_high.shape = (batch, 512)
     context_high, new_attn_sum_high = CoverageAttention(high_res.shape[1:], u_pred.shape[1:], attn_sum_high.shape[1:], output_filters = 256, kernel_size = (7,7))([high_res, u_pred, attn_sum_high]);
-    # context.shape = (batch,seq_length = 1, 1024)
+    # context.shape = (batch, 1024)
     context = tf.keras.layers.Concatenate(axis = -1)([context_low,context_high]);
+    # gru2_input.shape = (batch,seq_length = 1, 1024)
+    gru2_input = tf.keras.layers.Reshape((1,context.shape[-1],))(context);
     # new_hidden.shape = (batch, hidden size = 256)
-    gru2_input = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis = 1))(context);
     new_hidden = tf.keras.layers.GRU(units = hidden_size)(gru2_input, initial_state = pred);
     # w_s.shape = (batch, embedding size = 256)
     w_s = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(new_hidden);
     # w_c.shape = (batch, embedding size = 256)
     w_c = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(context);
     # out.shape = (batch, embedding size = 256)
-    embedded = tf.keras.layers.Lambda(lambda x: tf.squeeze(x, axis = 1))(embedded);
+    embedded = tf.keras.layers.Reshape((embedded.shape[-1],))(embedded);
     out = tf.keras.layers.Add()([embedded, w_s, w_c]);
     # out.shape = (batch, 128)
-    out = tf.keras.layers.Reshape((out.shape[-1] // 2, 2))(out);
+    out = tf.keras.layers.Reshape((out.shape[-1] // 2, 2,))(out);
     out = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(out);
     # out.shape = (batch, num classes)
     out = tf.keras.layers.Dense(units = num_classes, use_bias = False)(out);
@@ -212,11 +213,13 @@ class MathOCR(tf.keras.Model):
         # decoded sequence without without head
         logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1, clear_after_read = False);
         # instance encoder
-        if self.encoder == None: self.encoder = Encoder(image.shape[1:], output_filters = self.output_filters, dropout_rate = self.dropout_rate);
+        if self.encoder is None:
+            self.encoder = Encoder(image.shape[1:], output_filters = self.output_filters, dropout_rate = self.dropout_rate);
         # encode the input image
         low_res, high_res = self.encoder(image);
         # instance decoder
-        if self.decoder == None: self.decoder = Decoder(token_id_sequence.read(0).shape[1:], low_res.shape[1:], high_res.shape[1:], hidden.shape[1:], attn_sum_low.shape[1:], attn_sum_high.shape[1:],len(self.token_to_id),self.embedding_dim, self.hidden_size);
+        if self.decoder is None:
+            self.decoder = Decoder(token_id_sequence.read(0).shape[1:], low_res.shape[1:], high_res.shape[1:], hidden.shape[1:], attn_sum_low.shape[1:], attn_sum_high.shape[1:],len(self.token_to_id),self.embedding_dim, self.hidden_size);
         i = tf.constant(0);
         def step(i, hidden, attn_sum_low, attn_sum_high):
             # previous.shape = (batch, 1)
