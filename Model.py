@@ -254,6 +254,7 @@ class MathOCR(tf.keras.Model):
         flattened = np.reshape(inputs,(-1));
         outputs = list(map(lambda x: self.id_to_token[x], flattened));
         outputs = np.reshape(outputs,input_shape);
+        outputs = [''.join(sample) for sample in outputs];
         return outputs;
 
 if __name__ == "__main__":
