@@ -65,7 +65,8 @@ def main():
     checkpoint = tf.train.Checkpoint(mode = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
     checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
     # log utilities
-    avg_loss = tf.keras.metrics.Mean(name = 'loss', dtype = tf.float32);
+    train_loss = tf.keras.metrics.Mean(name = 'train loss', dtype = tf.float32);
+    eval_loss = tf.keras.metrics.Mean(name = 'eval loss', dtype = tf.float32);
     log = tf.summary.create_file_writer('checkpoint');
     while True:
         # data.shape = (batch, 128, 128, 1)
@@ -77,17 +78,27 @@ def main():
             with tf.GradientTape() as tape:
                 logits, token_id_seq = mathocr.train(data, tokens);
                 loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(expected, logits);
-            avg_loss.update_state(loss);
+            train_loss.update_state(loss);
             if tf.equal(optimizer.iterations % 100, 0):
                 with log.as_default():
-                    tf.summary.scalar('loss',avg_loss.result(), step = optimizer.iterations);
-                print('Step #%d Loss: %.6f' % (optimizer.iterations, avg_loss.result()));
-                avg_loss.reset_states();
+                    tf.summary.scalar('train loss',train_loss.result(), step = optimizer.iterations);
+                print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
+                train_loss.reset_states();
             grads = tape.gradient(loss, mathocr.trainable_variables);
             optimizer.apply_gradients(zip(grads, mathocr.trainable_variables));
+        if loss < 0.01: break;
+        # evaluate on testset
+        for data, tokens in testset:
+            # skip the first start token, only use the following ground truth values
+            expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+            expected = tf.one_hot(expected, len(mathocr.token_to_id));
+            logits, token_id_seq = mathocr(data);
+            loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(expected, logits);
+            eval_loss.update_state(loss);
+            with log.as_default():
+                tf.summary.scalar('eval loss',eval_loss.result(), step = optimizer.iterations);
         # save model every epoch
         checkpoint.save(os.path.join('checkpoint','ckpt'));
-        if loss < 0.01: break;
     #save the network structure with weights
     mathocr.encoder.save('encoder.h5');
     mathocr.decoder.save('decoder.h5');
