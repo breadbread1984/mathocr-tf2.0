@@ -22,5 +22,11 @@ Train the model by executing the following command
 ```python
 python3 train_mathocr.py
 ```
+## convert checkpoint to hdf5 model
 
+Convert the model with the command
+
+```python
+python3 save_model.py
+```
 
