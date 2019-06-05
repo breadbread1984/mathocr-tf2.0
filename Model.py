@@ -158,10 +158,6 @@ class MathOCR(tf.keras.Model):
         
     def call(self, image):
         
-        # if the model is trained, encoder and decoder must have been instanced.
-        assert self.encoder is not None;
-        assert self.decoder is not None;
-        
         img_shape = tf.shape(image);
         batch_num = img_shape[0];
         # context tensors
@@ -172,8 +168,6 @@ class MathOCR(tf.keras.Model):
         # whole sequence of token id
         token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max, clear_after_read = False);
         token_id_sequence.write(0, tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START]);
-        # decoded sequence without without head
-        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1, clear_after_read = False);
         # encode the input image
         low_res, high_res = self.encoder(image);
         i = tf.constant(0);
@@ -186,8 +180,6 @@ class MathOCR(tf.keras.Model):
             _, top1_id = tf.math.top_k(out,1);
             # append token id
             token_id_sequence.write(i + 1, tf.cast(top1_id, dtype = tf.int64));
-            # append logits
-            logits_sequence.write(i, out);
             # increase counter
             i = i + 1;
             return i, new_hidden, new_attn_sum_low, new_attn_sum_high;
@@ -195,9 +187,17 @@ class MathOCR(tf.keras.Model):
         tf.while_loop(lambda i, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
                       step, [i, hidden, attn_sum_low, attn_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
-        logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
         token_id_sequence = tf.transpose(token_id_sequence.stack(), perm = (1,0,2));
-        return logits_sequence, token_id_sequence;
+
+        # convert to readable string
+        inputs = token_id_sequence.numpy();
+        input_shape = inputs.shape;
+        flattened = np.reshape(inputs,(-1));
+        outputs = list(map(lambda x: self.id_to_token[x], flattened));
+        outputs = np.reshape(outputs,input_shape);
+        outputs = [''.join(sample) for sample in outputs];
+        
+        return outputs;
 
     def train(self, image, tokens):
         
@@ -208,9 +208,6 @@ class MathOCR(tf.keras.Model):
         attn_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]));
         attn_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]));
         
-        # whole sequence of token id
-        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max, clear_after_read = False);
-        token_id_sequence.write(0, tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START]);
         # decoded sequence without without head
         logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1, clear_after_read = False);
         # instance encoder
@@ -230,10 +227,6 @@ class MathOCR(tf.keras.Model):
             );
             # predict current token
             out, new_hidden, new_attn_sum_low, new_attn_sum_high = self.decoder([previous, low_res, high_res, hidden, attn_sum_low, attn_sum_high]);
-            # token id = (batch, 1)
-            _, top1_id = tf.math.top_k(out,1);
-            # append token id
-            token_id_sequence.write(i + 1, tf.cast(top1_id, dtype = tf.int64));
             # append logits
             logits_sequence.write(i, out);
             # increase counter
@@ -244,18 +237,7 @@ class MathOCR(tf.keras.Model):
                       step, [i, hidden, attn_sum_low, attn_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
         logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
-        token_id_sequence = tf.transpose(token_id_sequence.stack(), perm = (1,0,2));
-        return logits_sequence, token_id_sequence;
-
-    def to_readable(self, token_id_sequence):
-
-        inputs = token_id_sequence.numpy();
-        input_shape = inputs.shape;
-        flattened = np.reshape(inputs,(-1));
-        outputs = list(map(lambda x: self.id_to_token[x], flattened));
-        outputs = np.reshape(outputs,input_shape);
-        outputs = [''.join(sample) for sample in outputs];
-        return outputs;
+        return logits_sequence;
 
 if __name__ == "__main__":
     
