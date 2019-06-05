@@ -93,7 +93,7 @@ def CoverageAttention(input_shape, pred_shape, attn_sum_shape, output_filters, k
 
 def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, attn_sum_high_shape, num_classes, embedding_dim = 256, hidden_size = 256):
         
-    inputs = tf.keras.Input(shape = (1)); # previous token
+    inputs = tf.keras.Input(shape = (1,)); # previous token
     low_res = tf.keras.Input(shape = low_res_shape); # image low resolution encode
     high_res = tf.keras.Input(shape = high_res_shape); # image high resolution encode
     # context
