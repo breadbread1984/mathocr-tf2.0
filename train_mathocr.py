@@ -76,7 +76,7 @@ def main():
             expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
             expected = tf.one_hot(expected, len(mathocr.token_to_id));
             with tf.GradientTape() as tape:
-                logits, token_id_seq = mathocr.train(data, tokens);
+                logits = mathocr.train(data, tokens);
                 loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(expected, logits);
             train_loss.update_state(loss);
             if tf.equal(optimizer.iterations % 100, 0):
@@ -92,7 +92,7 @@ def main():
             # skip the first start token, only use the following ground truth values
             expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
             expected = tf.one_hot(expected, len(mathocr.token_to_id));
-            logits, token_id_seq = mathocr(data);
+            _, logits = mathocr(data);
             loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(expected, logits);
             eval_loss.update_state(loss);
             with log.as_default():
