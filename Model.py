@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import pickle;
+import numpy as np;
 import tensorflow as tf;
 
 def Bottleneck(input_shape, growth_rate, dropout_rate = 0.2):
@@ -245,6 +246,15 @@ class MathOCR(tf.keras.Model):
         logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
         token_id_sequence = tf.transpose(token_id_sequence.stack(), perm = (1,0,2));
         return logits_sequence, token_id_sequence;
+
+    def to_readable(self, token_id_sequence):
+
+        inputs = token_id_sequence.numpy();
+        input_shape = inputs.shape;
+        flattened = np.reshape(inputs,(-1));
+        outputs = list(map(lambda x: self.id_to_token[x], flattened));
+        outputs = np.reshape(outputs,input_shape);
+        return outputs;
 
 if __name__ == "__main__":
     
