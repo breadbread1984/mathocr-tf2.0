@@ -97,6 +97,7 @@ def main():
             eval_loss.update_state(loss);
             with log.as_default():
                 tf.summary.scalar('eval loss',eval_loss.result(), step = optimizer.iterations);
+            eval_loss.reset_states();
         # save model every epoch
         checkpoint.save(os.path.join('checkpoint','ckpt'));
     #save the network structure with weights
