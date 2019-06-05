@@ -205,7 +205,7 @@ class MathOCR(tf.keras.Model):
         input_shape = inputs.shape;
         flattened = np.reshape(inputs,(-1));
         outputs = list(map(lambda x: self.id_to_token[x], flattened));
-        outputs = np.reshape(outputs,input_shape);
+        outputs = np.reshape(outputs,(input_shape[0],-1));
         outputs = [''.join(sample) for sample in outputs]; 
         return outputs, logits_sequence;
 
@@ -254,5 +254,15 @@ class MathOCR(tf.keras.Model):
 if __name__ == "__main__":
     
     assert tf.executing_eagerly();
+    import cv2;
+    from train_mathocr import parse_function_generator;
     mathocr = MathOCR();
+    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
+    for data, tokens in testset:
+        img = data.numpy().astype('uint8');
+        cv2.imshow('image',img);
+        data = tf.expand_dims(data, 0);
+        s, _ = mathocr(data);
+        print(s);
+        cv2.waitKey();
 
