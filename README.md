@@ -30,3 +30,11 @@ Convert the model with the command
 python3 save_model.py
 ```
 
+## convert hdf5 model to saved model
+
+Convert the model with the command
+
+```python
+python3 convert_model.py
+```
+
