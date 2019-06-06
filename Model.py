@@ -167,10 +167,9 @@ class MathOCR(tf.keras.Model):
         img_shape = tf.shape(image);
         batch_num = img_shape[0];
         # whole sequence of token id
-        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max);
-        token_id_sequence.write(0, tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START]);
+        token_id_sequence = [tf.ones((batch_num,1,1), dtype = tf.int64) * self.token_to_id[self.START]];
         # decoded sequence without without head
-        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1);
+        logits_sequence = [];
         # encode the input image
         low_res, high_res = self.encoder(image);
         # loop variables
@@ -181,25 +180,25 @@ class MathOCR(tf.keras.Model):
         attn_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]));
         attn_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]));
 
-        def step(i, prev_token_id, prev_out, prev_hidden, prev_attn_sum_low, prev_attn_sum_high):
+        def step(i, prev_token_id, prev_hidden, prev_attn_sum_low, prev_attn_sum_high):
             # predict current token
             cur_out, cur_hidden, cur_attn_sum_low, cur_attn_sum_high = self.decoder([prev_token_id, low_res, high_res, prev_hidden, prev_attn_sum_low, prev_attn_sum_high]);
             # token id = (batch, 1)
             _, cur_token_id = tf.math.top_k(cur_out,1);
             # append token id
             cur_token_id = tf.cast(cur_token_id, dtype = tf.int64);
-            token_id_sequence.write(i + 1, cur_token_id);
+            token_id_sequence.append(tf.expand_dims(cur_token_id, axis = 1));
             # append logits
-            logits_sequence.write(i, cur_out);
+            logits_sequence.append(tf.expand_dims(cur_out, axis = 1));
             # increase counter
             i = i + 1;
-            return i, cur_token_id, cur_out, cur_hidden, cur_attn_sum_low, cur_attn_sum_high;
+            return i, cur_token_id, cur_hidden, cur_attn_sum_low, cur_attn_sum_high;
             
-        tf.while_loop(lambda i, token_id, out, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
-                      step, [i, token_id, out, hidden, attn_sum_low, attn_sum_high]);
+        tf.while_loop(lambda i, token_id, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
+                      step, [i, token_id, hidden, attn_sum_low, attn_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
-        logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
-        token_id_sequence = tf.transpose(token_id_sequence.stack(), perm = (1,0,2));
+        logits_sequence = tf.concat(logits_sequence, axis = 1);
+        token_id_sequence = tf.concat(token_id_sequence, axis = 1);
 
         # convert to readable string
         inputs = token_id_sequence.numpy();
@@ -215,7 +214,7 @@ class MathOCR(tf.keras.Model):
         img_shape = tf.shape(image);
         batch_num = img_shape[0];
         # decoded sequence without without head
-        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1);
+        logits_sequence = [];
         # encode the input image
         low_res, high_res = self.encoder(image);
         # loop variables
@@ -226,7 +225,7 @@ class MathOCR(tf.keras.Model):
         attn_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         attn_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
 
-        def step(i, prev_token_id, prev_out, prev_hidden, prev_attn_sum_low, prev_attn_sum_high):
+        def step(i, prev_token_id, prev_hidden, prev_attn_sum_low, prev_attn_sum_high):
             # previous.shape = (batch, 1)
             prev_token_id = tf.cond(
                 tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
@@ -239,15 +238,15 @@ class MathOCR(tf.keras.Model):
             # cast value type
             cur_token_id = tf.cast(cur_token_id, dtype = tf.int64);
             # append logits
-            logits_sequence.write(i, cur_out);
+            logits_sequence.append(tf.expand_dims(cur_out, axis = 1));
             # increase counter
             i = i + 1;
-            return i, cur_token_id, cur_out, cur_hidden, cur_attn_sum_low, cur_attn_sum_high;
+            return i, cur_token_id, cur_hidden, cur_attn_sum_low, cur_attn_sum_high;
             
-        tf.while_loop(lambda i, token_id, out, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
-                      step, [i, token_id, out, hidden, attn_sum_low, attn_sum_high]);
+        tf.while_loop(lambda i, token_id, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
+                      step, [i, token_id, hidden, attn_sum_low, attn_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
-        logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
+        logits_sequence = tf.concat(logits_sequence, axis = 1);
         return logits_sequence;
 
 if __name__ == "__main__":
