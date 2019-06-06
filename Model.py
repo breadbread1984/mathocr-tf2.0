@@ -188,7 +188,7 @@ class MathOCR(tf.keras.Model):
             _, cur_token_id = tf.math.top_k(cur_out,1);
             # append token id
             cur_token_id = tf.cast(cur_token_id, dtype = tf.int64);
-            token_id_sequence.write(i + 1, tf.cast(cur_token_id, dtype = tf.int64));
+            token_id_sequence.write(i + 1, cur_token_id);
             # append logits
             logits_sequence.write(i, cur_out);
             # increase counter
