@@ -100,9 +100,11 @@ def main():
         eval_loss.reset_states();
         # save model every epoch
         checkpoint.save(os.path.join('checkpoint','ckpt'));
-    #save the network structure with weights
+    # save the network structure with weights
     mathocr.encoder.save('encoder.h5');
     mathocr.decoder.save('decoder.h5');
+    # subclassing model mathocr can only save weights
+    mathocr.save_weights('mathocr.h5');
 
 if __name__ == "__main__":
 
