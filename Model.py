@@ -255,6 +255,9 @@ if __name__ == "__main__":
     import cv2;
     from train_mathocr import parse_function_generator;
     mathocr = MathOCR();
+    optimizer = tf.keras.optimizers.Adam(1e-3);
+    checkpoint = tf.train.Checkpoint(model = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
+    checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
     for data, tokens in testset:
         img = data.numpy().astype('uint8');
