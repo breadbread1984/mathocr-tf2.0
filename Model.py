@@ -167,10 +167,10 @@ class MathOCR(tf.keras.Model):
         img_shape = tf.shape(image);
         batch_num = img_shape[0];
         # whole sequence of token id
-        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max, clear_after_read = False);
+        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max);
         token_id_sequence.write(0, tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START]);
         # decoded sequence without without head
-        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1, clear_after_read = False);
+        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1);
         # encode the input image
         low_res, high_res = self.encoder(image);
         # loop variables
