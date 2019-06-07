@@ -192,7 +192,7 @@ class MathOCR(tf.keras.Model):
             logits_sequence.append(tf.expand_dims(cur_out, axis = 1));
             # increase counter
             i = i + 1;
-            return i, cur_token_id, cur_hidden, cur_attn_sum_low, cur_attn_sum_high;
+            return i, cur_token_id, tf.stop_gradient(cur_hidden), cur_attn_sum_low, cur_attn_sum_high;
             
         tf.while_loop(lambda i, token_id, hidden, attn_sum_low, attn_sum_high: tf.less(i,self.tokens_length_max - 1), 
                       step, [i, token_id, hidden, attn_sum_low, attn_sum_high]);
