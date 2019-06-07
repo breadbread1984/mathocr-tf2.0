@@ -83,7 +83,7 @@ def CoverageAttention(input_shape, pred_shape, attn_sum_shape, output_filters, k
     attn = tf.keras.layers.Softmax()(tf.keras.layers.Flatten()(e_t));
     # attn.shape = (batch, input_height, input_width, 1)
     attn = tf.keras.layers.Reshape((inputs.shape[1], inputs.shape[2], 1,))(attn);
-    new_attn_sum = tf.keras.layers.Add()([attn_sum, attn]);
+    new_attn_sum = tf.keras.layers.Add()([attn_sum, tf.stop_gradient(attn)]);
     # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
     attn = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,1,1,inputs.shape[-1])))(attn);
     weighted_inputs = tf.keras.layers.Multiply()([attn, inputs]);
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
     for data, tokens in testset:
-        img = data.numpy().astype('uint8');
+        img = (data.numpy() * 255.).astype('uint8');
         cv2.imshow('image',img);
         data = tf.expand_dims(data, 0);
         s, _ = mathocr(data);
