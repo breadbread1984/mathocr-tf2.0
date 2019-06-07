@@ -30,6 +30,7 @@ def parse_function_generator(pad_code, crop = True, transform = True):
         data = tf.io.decode_raw(context['data'], out_type = tf.uint8);
         data = tf.reshape(data, (256,256,1));
         data = tf.cast(data, dtype = tf.float32);
+        data = data / 255.;
         text_length = tf.cast(context['text_length'], dtype = tf.int32);
         tokens_length = tf.cast(context['tokens_length'], dtype = tf.int32);
         text = sequence['text'];
