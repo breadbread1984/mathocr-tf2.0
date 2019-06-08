@@ -180,9 +180,9 @@ class MathOCR(tf.keras.Model):
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]));
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]));
 
-        def step(i, prev_token_id, prev_hidden, prev_attn_sum_low, prev_attn_sum_high):
+        def step(i, prev_token_id, prev_hidden, prev_alpha_sum_low, prev_alpha_sum_high):
             # predict Ua token
-            cur_out, cur_hidden, cur_attn_sum_low, cur_attn_sum_high = self.decoder([prev_token_id, low_res, high_res, prev_hidden, prev_attn_sum_low, prev_attn_sum_high]);
+            cur_out, cur_hidden, cur_attn_sum_low, cur_attn_sum_high = self.decoder([prev_token_id, low_res, high_res, prev_hidden, prev_alpha_sum_low, prev_alpha_sum_high]);
             # token id = (batch, 1)
             _, cur_token_id = tf.math.top_k(cur_out,1);
             # append token id
@@ -225,14 +225,14 @@ class MathOCR(tf.keras.Model):
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
 
-        def step(i, prev_token_id, prev_hidden, prev_attn_sum_low, prev_attn_sum_high):
+        def step(i, prev_token_id, prev_hidden, prev_alpha_sum_low, prev_alpha_sum_high):
             # previous.shape = (batch, 1)
             prev_token_id = tf.cond(
                 tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
                 lambda: tokens[:,i:i+1], lambda: prev_token_id
             );
             # predict Ua token
-            cur_out, cur_hidden, cur_attn_sum_low, cur_attn_sum_high = self.decoder([prev_token_id, low_res, high_res, prev_hidden, prev_attn_sum_low, prev_attn_sum_high]);
+            cur_out, cur_hidden, cur_attn_sum_low, cur_attn_sum_high = self.decoder([prev_token_id, low_res, high_res, prev_hidden, prev_alpha_sum_low, prev_alpha_sum_high]);
             # token id = (batch, 1)
             _, cur_token_id = tf.math.top_k(cur_out,1);
             # cast value type
