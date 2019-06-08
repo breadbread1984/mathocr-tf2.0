@@ -61,7 +61,7 @@ def main():
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).batch(batch_num);
     # checkpoints utilities
-    optimizer = tf.keras.optimizers.Adam(1e-3);
+    optimizer = tf.keras.optimizers.Adam(1e-3, decay = 1e-4);
     if False == os.path.exists('checkpoint'): os.mkdir('checkpoint');
     checkpoint = tf.train.Checkpoint(mode = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
     checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
