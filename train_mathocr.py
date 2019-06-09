@@ -86,7 +86,7 @@ def main():
                     img = (data[0:1,...].numpy() * 255.).astype('uint8');
                     tf.summary.image('sampled image', img, step = optimizer.iterations);
                     s, _ = mathocr(data[0:1,...]);
-                    tf.summary.text('decoded latex',s);
+                    tf.summary.text('decoded latex',s, step = optimizer.iterations);
                 print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
                 train_loss.reset_states();
                 # save model every 100 iteration
