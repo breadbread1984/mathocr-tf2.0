@@ -135,7 +135,7 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     out = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(out);
     # out.shape = (batch, num classes)
     out = tf.keras.layers.Dense(units = num_classes, use_bias = False)(out);
-    return tf.keras.Model(inputs = (prev_token, low_res, high_res, s_tm1, alpha_sum_low, alpha_sum_high), outputs = (out, new_hidden, new_attn_sum_low, new_attn_sum_high));
+    return tf.keras.Model(inputs = (prev_token, low_res, high_res, s_tm1, alpha_sum_low, alpha_sum_high), outputs = (out, s_t, new_attn_sum_low, new_attn_sum_high));
 
 class MathOCR(tf.keras.Model):
     
