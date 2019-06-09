@@ -101,16 +101,16 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     low_res = tf.keras.Input(shape = low_res_shape); # image low resolution encode
     high_res = tf.keras.Input(shape = high_res_shape); # image high resolution encode
     # context
-    hidden = tf.keras.Input(shape = hidden_shape);
+    s_tm1 = tf.keras.Input(shape = hidden_shape);
     alpha_sum_low = tf.keras.Input(shape = attn_sum_low_shape);
     alpha_sum_high = tf.keras.Input(shape = attn_sum_high_shape);
         
     # prev_token.shape = (batch, seq_length = 1)
-    # hidden.shape = (batch, hidden size = 256)
+    # s_tm1.shape = (batch, s_tm1 size = 256)
     # y_tm1.shape = (batch, seq_length = 1,embedding size = 256)
     y_tm1 = tf.keras.layers.Embedding(input_dim = num_classes, output_dim = embedding_dim)(prev_token);
-    # s_t.shape = (batch, hidden size = 256)
-    s_t = tf.keras.layers.GRU(units = hidden_size)(y_tm1, initial_state = hidden);
+    # s_t.shape = (batch, s_tm1 size = 256)
+    s_t = tf.keras.layers.GRU(units = hidden_size)(y_tm1, initial_state = s_tm1);
     # hat_s_t.shape = (batch, 512)
     hat_s_t = tf.keras.layers.Dense(units = 512, use_bias = False)(s_t);
     # context_low.shape = (batch, 512)
@@ -121,7 +121,7 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     context = tf.keras.layers.Concatenate(axis = -1)([context_low,context_high]);
     # c_t.shape = (batch,seq_length = 1, 1024)
     c_t = tf.keras.layers.Reshape((1,context.shape[-1],))(context);
-    # new_hidden.shape = (batch, hidden size = 256)
+    # new_hidden.shape = (batch, s_tm1 size = 256)
     new_hidden = tf.keras.layers.GRU(units = hidden_size)(c_t, initial_state = s_t);
     # w_s.shape = (batch, embedding size = 256)
     w_s = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(new_hidden);
@@ -135,7 +135,7 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     out = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(out);
     # out.shape = (batch, num classes)
     out = tf.keras.layers.Dense(units = num_classes, use_bias = False)(out);
-    return tf.keras.Model(inputs = (prev_token,low_res,high_res,hidden,alpha_sum_low,alpha_sum_high), outputs = (out, new_hidden, new_attn_sum_low, new_attn_sum_high));
+    return tf.keras.Model(inputs = (prev_token,low_res,high_res,s_tm1,alpha_sum_low,alpha_sum_high), outputs = (out, new_hidden, new_attn_sum_low, new_attn_sum_high));
 
 class MathOCR(tf.keras.Model):
     
