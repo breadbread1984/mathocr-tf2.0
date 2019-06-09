@@ -83,6 +83,10 @@ def main():
             if tf.equal(optimizer.iterations % 100, 0):
                 with log.as_default():
                     tf.summary.scalar('train loss',train_loss.result(), step = optimizer.iterations);
+                    img = (data[0:1,...].numpy() * 255.).astype('uint8');
+                    tf.summary.image('sampled image', img, step = optimizer.iterations);
+                    s, _ = mathocr(data[0:1,...]);
+                    tf.summary.text('decoded latex',s);
                 print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
                 train_loss.reset_states();
                 # save model every 100 iteration
