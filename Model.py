@@ -121,10 +121,10 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     context = tf.keras.layers.Concatenate(axis = -1)([context_low,context_high]);
     # c_t.shape = (batch,seq_length = 1, 1024)
     c_t = tf.keras.layers.Reshape((1,context.shape[-1],))(context);
-    # new_hidden.shape = (batch, s_tm1 size = 256)
-    new_hidden = tf.keras.layers.GRU(units = hidden_size)(c_t, initial_state = s_t);
+    # s_t.shape = (batch, s_tm1 size = 256)
+    s_t = tf.keras.layers.GRU(units = hidden_size)(c_t, initial_state = s_t);
     # w_s.shape = (batch, embedding size = 256)
-    w_s = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(new_hidden);
+    w_s = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(s_t);
     # w_c.shape = (batch, embedding size = 256)
     w_c = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(context);
     # out.shape = (batch, embedding size = 256)
