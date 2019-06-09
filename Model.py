@@ -268,6 +268,14 @@ if __name__ == "__main__":
         cv2.imshow('image',img);
         data = tf.expand_dims(data, 0);
         s, _ = mathocr(data);
-        print(s);
+        print('predicted:',s);
+        tokens = tf.expand_dims(tokens,0);
+        inputs = tokens.numpy();
+        inputs_shape = inputs.shape;
+        flattened = np.reshape(inputs,(-1));
+        outputs = list(map(lambda x: mathocr.id_to_token[x], flattened));
+        outputs = np.reshape(outputs,(inputs_shape[0],-1));
+        outputs = [''.join(sample) for sample in outputs];
+        print('expected:',outputs[0]);
         cv2.waitKey();
 
