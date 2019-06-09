@@ -85,6 +85,8 @@ def main():
                     tf.summary.scalar('train loss',train_loss.result(), step = optimizer.iterations);
                 print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
                 train_loss.reset_states();
+                # save model every 100 iteration
+                checkpoint.save(os.path.join('checkpoint','ckpt'));
             grads = tape.gradient(loss, mathocr.trainable_variables);
             optimizer.apply_gradients(zip(grads, mathocr.trainable_variables));
         if loss < 0.01: break;
@@ -99,8 +101,6 @@ def main():
         with log.as_default():
             tf.summary.scalar('eval loss',eval_loss.result(), step = optimizer.iterations);
         eval_loss.reset_states();
-        # save model every epoch
-        checkpoint.save(os.path.join('checkpoint','ckpt'));
     # save the network structure with weights
     mathocr.encoder.save('encoder.h5');
     mathocr.decoder.save('decoder.h5');
