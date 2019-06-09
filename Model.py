@@ -64,10 +64,10 @@ def Encoder(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filter
 
     return tf.keras.Model(inputs = inputs, outputs = (outA, outB));
 
-def CoverageAttention(code_shape, s_t_shape, alpha_sum_shape, output_filters, kernel_size):
+def CoverageAttention(code_shape, hat_s_t_shape, alpha_sum_shape, output_filters, kernel_size):
 
     code = tf.keras.Input(shape = code_shape);
-    s_t = tf.keras.Input(shape = s_t_shape);
+    hat_s_t = tf.keras.Input(shape = hat_s_t_shape);
     alpha_sum = tf.keras.Input(shape = alpha_sum_shape);
     # F.shape = (batch, input height, input width, output_filters)
     F = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = kernel_size, padding = 'same')(alpha_sum);
@@ -76,7 +76,7 @@ def CoverageAttention(code_shape, s_t_shape, alpha_sum_shape, output_filters, ke
     # Ua.shape = (batch, input_height, input_width, 512)
     Ua = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False)(code);
     # Us.shape = (batch, 1, 1, 512)
-    Us = tf.keras.layers.Reshape((1,1,s_t.shape[-1],))(s_t);
+    Us = tf.keras.layers.Reshape((1,1,hat_s_t.shape[-1],))(hat_s_t);
     # response.shape = (batch, input_height, input_width, 512)
     Us = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,code.shape[1],code.shape[2],1)))(Us);
     s = tf.keras.layers.Add()([Us,Ua,Uf]);
@@ -93,7 +93,7 @@ def CoverageAttention(code_shape, s_t_shape, alpha_sum_shape, output_filters, ke
     weighted_inputs = tf.keras.layers.Multiply()([alpha_t, code]);
     # context.shape = (batch, input_filters)
     context = tf.keras.layers.Lambda(lambda x: tf.math.reduce_sum(x, axis = [1,2]))(weighted_inputs);
-    return tf.keras.Model(inputs = (code, s_t, alpha_sum), outputs = (context, new_alpha_sum));
+    return tf.keras.Model(inputs = (code, hat_s_t, alpha_sum), outputs = (context, new_alpha_sum));
 
 def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, attn_sum_high_shape, num_classes, embedding_dim = 256, hidden_size = 256):
         
