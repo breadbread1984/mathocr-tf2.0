@@ -46,7 +46,7 @@ def parse_function_generator(pad_code, crop = True, transform = True):
             hw = max_yx - min_yx;
             data = tf.image.crop_to_bounding_box(data, min_yx[0], min_yx[1], hw[0], hw[1]);
         if transform:
-            data = tf.image.resize(data, (128,128))
+            data = tf.image.resize(data, (256,256))
             
         # pad to fix length to enable batch
         tokens = tf.pad(tokens, paddings = [[0,tokens_length_max - tf.shape(tokens)[0]]], constant_values = pad_code);
@@ -58,8 +58,8 @@ def main():
     # networks
     mathocr = MathOCR(tokens_length_max = tokens_length_max);
     # load dataset
-    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, False)).shuffle(batch_num).batch(batch_num);
-    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, False)).batch(batch_num);
+    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
+    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).batch(batch_num);
     # checkpoints utilities
     optimizer = tf.keras.optimizers.Adam(1e-3, decay = 1e-4);
     if False == os.path.exists('checkpoint'): os.mkdir('checkpoint');

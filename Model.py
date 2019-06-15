@@ -20,7 +20,7 @@ def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filte
         for j in range(level):
             shortcut = results;
             # conv 1x1
-            results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1), use_bias = False)(results);
+            results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1), padding = 'same', use_bias = False)(results);
             results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
             results = tf.keras.layers.ReLU()(results);
             results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
@@ -34,7 +34,7 @@ def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filte
         # transition
         # channel halved
         if i < blocks - 1:
-            results = tf.keras.layers.Conv2D(filters = results.shape[-1] // 2, kernel_size = (1,1), use_bias = False)(results);
+            results = tf.keras.layers.Conv2D(filters = results.shape[-1] // 2, kernel_size = (1,1), padding = 'same', use_bias = False)(results);
             results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
             results = tf.keras.layers.ReLU()(results);
             results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
@@ -45,20 +45,29 @@ def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filte
 
 def Attender(code_shape, hat_s_t_shape, alpha_sum_shape, kernel_size):
 
+    # FIXME: print
+    def func(x):
+        print(x.name, x.shape);
+        return x;
     code = tf.keras.Input(shape = code_shape);
     hat_s_t = tf.keras.Input(shape = hat_s_t_shape);
     alpha_sum = tf.keras.Input(shape = alpha_sum_shape);
     # F.shape = (batch, input height, input width, output_filters)
     F = tf.keras.layers.Conv2D(filters = 512, kernel_size = kernel_size, padding = 'same', use_bias = False)(alpha_sum);
     # Uf.shape = (batch, input_height, input_width, 512)
-    Uf = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1))(F);
+    Uf = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same')(F);
     # Ua.shape = (batch, input_height, input_width, 512)
-    Ua = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1))(code);
+    Ua = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same')(code);
     # Us.shape = (batch, 1, 1, 512)
     Us = tf.keras.layers.Dense(units = 512)(hat_s_t);
     Us = tf.keras.layers.Reshape((1,1,Us.shape[-1],))(Us);
     # response.shape = (batch, input_height, input_width, 512)
     Us = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,code.shape[1],code.shape[2],1)))(Us);
+    # FIXME: print
+    Us_p = tf.keras.layers.Lambda(func)(Us);
+    Ua_p = tf.keras.layers.Lambda(func)(Ua);
+    Uf_p = tf.keras.layers.Lambda(func)(Uf);
+    
     s = tf.keras.layers.Add()([Us,Ua,Uf]);
     response = tf.keras.layers.Lambda(lambda x: tf.math.tanh(x))(s);
     # e_t.shape = (batch, input_height, input_width, 1)
@@ -67,6 +76,10 @@ def Attender(code_shape, hat_s_t_shape, alpha_sum_shape, kernel_size):
     alpha_t = tf.keras.layers.Softmax()(tf.keras.layers.Flatten()(e_t));
     # alpha_t.shape = (batch, input_height, input_width, 1)
     alpha_t = tf.keras.layers.Reshape((code.shape[1], code.shape[2], 1,))(alpha_t);
+    # FIXME: print
+    alpha_sum_p = tf.keras.layers.Lambda(func)(alpha_sum);
+    alpha_t_p = tf.keras.layers.Lambda(func)(alpha_t);
+    
     new_alpha_sum = tf.keras.layers.Add()([alpha_sum, alpha_t]);
     # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
     alpha_t = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,1,1,code.shape[-1])))(alpha_t);
@@ -77,6 +90,10 @@ def Attender(code_shape, hat_s_t_shape, alpha_sum_shape, kernel_size):
 
 def Decoder(code_shape, hidden_shape, alpha_shape, num_classes, embedding_dim = 256, hidden_size = 256, dropout_rate = 0.2):
 
+    # FIXME: print
+    def func(x):
+        print(x.name, x.shape);
+        return x;
     prev_token = tf.keras.Input(shape = (1,)); # previous token
     code = tf.keras.Input(shape = code_shape); # image low resolution encode
     # context
@@ -103,6 +120,11 @@ def Decoder(code_shape, hidden_shape, alpha_shape, num_classes, embedding_dim = 
     w_c = tf.keras.layers.Dense(units = embedding_dim)(context);
     # out.shape = (batch, embedding size = 256)
     y_tm1 = tf.keras.layers.Reshape((y_tm1.shape[-1],))(y_tm1);
+    # FIXME: print
+    y_tm1_p = tf.keras.layers.Lambda(func)(y_tm1);
+    w_s_p = tf.keras.layers.Lambda(func)(w_s);
+    w_c_p = tf.keras.layers.Lambda(func)(w_c);
+    
     out = tf.keras.layers.Add()([y_tm1, w_s, w_c]);
     # out.shape = (batch, 128)
     out = tf.keras.layers.Reshape((out.shape[-1] // 2, 2,))(out);
@@ -154,7 +176,6 @@ class MathOCR(tf.keras.Model):
         # loop variables
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
-        out = tf.zeros((batch_num, len(self.token_to_id)), dtype = tf.float32);
         s_t = self.dense(tf.math.reduce_mean(code, axis = [1,2]));
         alpha_sum = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
 
@@ -198,7 +219,6 @@ class MathOCR(tf.keras.Model):
         # loop variables
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
-        out = tf.zeros((batch_num, len(self.token_to_id)), dtype = tf.float32);
         s_t = self.dense(tf.math.reduce_mean(code, axis = [1,2]));
         alpha_sum = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
 
@@ -235,7 +255,7 @@ if __name__ == "__main__":
     optimizer = tf.keras.optimizers.Adam(1e-3);
     checkpoint = tf.train.Checkpoint(model = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
     checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
-    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, False));
+    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
     for data, tokens in testset:
         img = (data.numpy() * 255.).astype('uint8');
         cv2.imshow('image',img);
