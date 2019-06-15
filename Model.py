@@ -9,7 +9,7 @@ def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filte
     # h,w of outA(low_res) = 1/16 h, 1/16 w of input's
     # h,w of outB(high_res) = 1/8 h, 1/8 w of input's
     inputs = tf.keras.Input(shape = input_shape);
-    results = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = (7,7), strides = (2,2), padding = 'same', use_bias = False)(inputs);
+    results = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = (7,7), strides = (2,2), padding = 'same')(inputs);
     results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
     results = tf.keras.layers.ReLU()(results);
     # NOTE: height and width are halved
@@ -19,12 +19,12 @@ def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filte
         for j in range(level):
             shortcut = results;
             # conv 1x1
-            results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1), use_bias = False)(results);
+            results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1))(results);
             results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
             results = tf.keras.layers.ReLU()(results);
             results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
             # conv 3x3
-            results = tf.keras.layers.Conv2D(filters = growth_rate, kernel_size = (3,3), padding = 'same', use_bias = False)(results);
+            results = tf.keras.layers.Conv2D(filters = growth_rate, kernel_size = (3,3), padding = 'same')(results);
             results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
             results = tf.keras.layers.ReLU()(results);
             results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
@@ -32,7 +32,7 @@ def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filte
             results = tf.keras.layers.Concatenate()([shortcut, results]);
         # transition
         if i < blocks - 1:
-            results = tf.keras.layers.Conv2D(filters = results.shape[-1] // 2, kernel_size = (1,1), use_bias = False)(results);
+            results = tf.keras.layers.Conv2D(filters = results.shape[-1] // 2, kernel_size = (1,1))(results);
             results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
             results = tf.keras.layers.ReLU()(results);
             results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
@@ -49,12 +49,12 @@ def Encoder(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filter
     for i in range(level):
         shortcut = results;
         # conv 1x1
-        results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1), use_bias = False)(results);
+        results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1))(results);
         results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
         results = tf.keras.layers.ReLU()(results);
         results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
         # conv 3x3
-        results = tf.keras.layers.Conv2D(filters = growth_rate, kernel_size = (3,3), padding = 'same', use_bias = False)(results);
+        results = tf.keras.layers.Conv2D(filters = growth_rate, kernel_size = (3,3), padding = 'same')(results);
         results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
         results = tf.keras.layers.ReLU()(results);
         results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
@@ -72,9 +72,9 @@ def CoverageAttention(code_shape, hat_s_t_shape, alpha_sum_shape, output_filters
     # F.shape = (batch, input height, input width, output_filters)
     F = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = kernel_size, padding = 'same')(alpha_sum);
     # Uf.shape = (batch, input_height, input_width, 512)
-    Uf = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False)(F);
+    Uf = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same')(F);
     # Ua.shape = (batch, input_height, input_width, 512)
-    Ua = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same', use_bias = False)(code);
+    Ua = tf.keras.layers.Conv2D(filters = 512, kernel_size = (1,1), padding = 'same')(code);
     # Us.shape = (batch, 1, 1, 512)
     Us = tf.keras.layers.Reshape((1,1,hat_s_t.shape[-1],))(hat_s_t);
     # response.shape = (batch, input_height, input_width, 512)
@@ -82,7 +82,7 @@ def CoverageAttention(code_shape, hat_s_t_shape, alpha_sum_shape, output_filters
     s = tf.keras.layers.Add()([Us,Ua,Uf]);
     response = tf.keras.layers.Lambda(lambda x: tf.math.tanh(x))(s);
     # e_t.shape = (batch, input_height, input_width, 1)
-    e_t = tf.keras.layers.Conv2D(filters = 1, kernel_size = (1,1), padding = 'same', use_bias = False)(response);
+    e_t = tf.keras.layers.Conv2D(filters = 1, kernel_size = (1,1), padding = 'same')(response);
     # alpha_t.shape = (batch, input_height * input_width)
     alpha_t = tf.keras.layers.Softmax()(tf.keras.layers.Flatten()(e_t));
     # alpha_t.shape = (batch, input_height, input_width, 1)
@@ -112,7 +112,7 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     # s_t.shape = (batch, s_tm1 size = 256)
     s_t = tf.keras.layers.GRU(units = hidden_size)(y_tm1, initial_state = s_tm1);
     # hat_s_t.shape = (batch, 512)
-    hat_s_t = tf.keras.layers.Dense(units = 512, use_bias = False)(s_t);
+    hat_s_t = tf.keras.layers.Dense(units = 512)(s_t);
     # context_low.shape = (batch, 512)
     context_low, new_attn_sum_low = CoverageAttention(low_res.shape[1:], hat_s_t.shape[1:], alpha_sum_low.shape[1:], output_filters = 256, kernel_size = (11,11))([low_res, hat_s_t, alpha_sum_low]);
     # context_high.shape = (batch, 512)
@@ -124,9 +124,9 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     # s_t.shape = (batch, s_tm1 size = 256)
     s_t = tf.keras.layers.GRU(units = hidden_size)(c_t, initial_state = s_t);
     # w_s.shape = (batch, embedding size = 256)
-    w_s = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(s_t);
+    w_s = tf.keras.layers.Dense(units = embedding_dim)(s_t);
     # w_c.shape = (batch, embedding size = 256)
-    w_c = tf.keras.layers.Dense(units = embedding_dim, use_bias = False)(context);
+    w_c = tf.keras.layers.Dense(units = embedding_dim)(context);
     # out.shape = (batch, embedding size = 256)
     y_tm1 = tf.keras.layers.Reshape((y_tm1.shape[-1],))(y_tm1);
     out = tf.keras.layers.Add()([y_tm1, w_s, w_c]);
@@ -134,7 +134,7 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     out = tf.keras.layers.Reshape((out.shape[-1] // 2, 2,))(out);
     out = tf.keras.layers.Lambda(lambda x: tf.math.reduce_max(x, axis = -1))(out);
     # out.shape = (batch, num classes)
-    out = tf.keras.layers.Dense(units = num_classes, use_bias = False)(out);
+    out = tf.keras.layers.Dense(units = num_classes)(out);
     return tf.keras.Model(inputs = (prev_token, low_res, high_res, s_tm1, alpha_sum_low, alpha_sum_high), outputs = (out, s_t, new_attn_sum_low, new_attn_sum_high));
 
 class MathOCR(tf.keras.Model):
@@ -155,6 +155,7 @@ class MathOCR(tf.keras.Model):
         self.hidden_size = hidden_size;
         self.tokens_length_max = tokens_length_max;
         self.encoder = Encoder(input_shape[-3:], 3, 16, 24, output_filters, dropout_rate);
+        self.dense = tf.keras.layers.Dense(units = hidden_size, activation = tf.math.tanh);
         self.decoder = Decoder(
             self.encoder.outputs[0].shape[1:],
             self.encoder.outputs[1].shape[1:],
@@ -180,7 +181,7 @@ class MathOCR(tf.keras.Model):
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
         out = tf.zeros((batch_num, len(self.token_to_id)), dtype = tf.float32);
-        s_t = tf.zeros((batch_num, self.hidden_size), dtype = tf.float32);
+        s_t = self.dense(tf.math.reduce_mean(low_res, axis = [1,2]));
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
 
@@ -225,7 +226,7 @@ class MathOCR(tf.keras.Model):
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
         out = tf.zeros((batch_num, len(self.token_to_id)), dtype = tf.float32);
-        s_t = tf.zeros((batch_num, self.hidden_size), dtype = tf.float32);
+        s_t = self.dense(tf.math.reduce_mean(low_res, axis = [1,2]));
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
 
