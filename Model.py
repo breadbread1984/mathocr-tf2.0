@@ -45,10 +45,6 @@ def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filte
 
 def Attender(code_shape, hat_s_t_shape, alpha_sum_shape, kernel_size):
 
-    # FIXME: print
-    def func(x):
-        print(x.name, x.shape);
-        return x;
     code = tf.keras.Input(shape = code_shape);
     hat_s_t = tf.keras.Input(shape = hat_s_t_shape);
     alpha_sum = tf.keras.Input(shape = alpha_sum_shape);
@@ -63,11 +59,6 @@ def Attender(code_shape, hat_s_t_shape, alpha_sum_shape, kernel_size):
     Us = tf.keras.layers.Reshape((1,1,Us.shape[-1],))(Us);
     # response.shape = (batch, input_height, input_width, 512)
     Us = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,code.shape[1],code.shape[2],1)))(Us);
-    # FIXME: print
-    Us_p = tf.keras.layers.Lambda(func)(Us);
-    Ua_p = tf.keras.layers.Lambda(func)(Ua);
-    Uf_p = tf.keras.layers.Lambda(func)(Uf);
-    
     s = tf.keras.layers.Add()([Us,Ua,Uf]);
     response = tf.keras.layers.Lambda(lambda x: tf.math.tanh(x))(s);
     # e_t.shape = (batch, input_height, input_width, 1)
@@ -76,10 +67,6 @@ def Attender(code_shape, hat_s_t_shape, alpha_sum_shape, kernel_size):
     alpha_t = tf.keras.layers.Softmax()(tf.keras.layers.Flatten()(e_t));
     # alpha_t.shape = (batch, input_height, input_width, 1)
     alpha_t = tf.keras.layers.Reshape((code.shape[1], code.shape[2], 1,))(alpha_t);
-    # FIXME: print
-    alpha_sum_p = tf.keras.layers.Lambda(func)(alpha_sum);
-    alpha_t_p = tf.keras.layers.Lambda(func)(alpha_t);
-    
     new_alpha_sum = tf.keras.layers.Add()([alpha_sum, alpha_t]);
     # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
     alpha_t = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,1,1,code.shape[-1])))(alpha_t);
@@ -90,10 +77,6 @@ def Attender(code_shape, hat_s_t_shape, alpha_sum_shape, kernel_size):
 
 def Decoder(code_shape, hidden_shape, alpha_shape, num_classes, embedding_dim = 256, hidden_size = 256, dropout_rate = 0.2):
 
-    # FIXME: print
-    def func(x):
-        print(x.name, x.shape);
-        return x;
     prev_token = tf.keras.Input(shape = (1,)); # previous token
     code = tf.keras.Input(shape = code_shape); # image low resolution encode
     # context
@@ -120,11 +103,6 @@ def Decoder(code_shape, hidden_shape, alpha_shape, num_classes, embedding_dim = 
     w_c = tf.keras.layers.Dense(units = embedding_dim)(context);
     # out.shape = (batch, embedding size = 256)
     y_tm1 = tf.keras.layers.Reshape((y_tm1.shape[-1],))(y_tm1);
-    # FIXME: print
-    y_tm1_p = tf.keras.layers.Lambda(func)(y_tm1);
-    w_s_p = tf.keras.layers.Lambda(func)(w_s);
-    w_c_p = tf.keras.layers.Lambda(func)(w_c);
-    
     out = tf.keras.layers.Add()([y_tm1, w_s, w_c]);
     # out.shape = (batch, 128)
     out = tf.keras.layers.Reshape((out.shape[-1] // 2, 2,))(out);
