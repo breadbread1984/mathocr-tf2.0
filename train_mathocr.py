@@ -58,8 +58,8 @@ def main():
     # networks
     mathocr = MathOCR(tokens_length_max = tokens_length_max);
     # load dataset
-    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
-    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).batch(batch_num);
+    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, False)).shuffle(batch_num).batch(batch_num);
+    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, False)).batch(batch_num);
     # checkpoints utilities
     optimizer = tf.keras.optimizers.Adam(1e-3, decay = 1e-4);
     if False == os.path.exists('checkpoint'): os.mkdir('checkpoint');
@@ -86,7 +86,7 @@ def main():
                     img = (data[0:1,...].numpy() * 255.).astype('uint8');
                     tf.summary.image('sampled image', img, step = optimizer.iterations);
                     s, _ = mathocr(data[0:1,...]);
-                    tf.summary.text('decoded latex',s, step = optimizer.iterations);
+                    tf.summary.text('decoded latex', s, step = optimizer.iterations);
                 print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
                 train_loss.reset_states();
                 # save model every 100 iteration
