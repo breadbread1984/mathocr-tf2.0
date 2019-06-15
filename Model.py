@@ -202,10 +202,7 @@ class MathOCR(tf.keras.Model):
 
         def step(i, prev_token_id, s_tm1, prev_alpha_sum):
             # previous.shape = (batch, 1)
-            prev_token_id = tf.cond(
-                tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
-                lambda: tokens[:,i:i+1], lambda: prev_token_id
-            );
+            prev_token_id = tokens[:,i:i+1];
             # predict Ua token
             cur_out, s_t, cur_alpha_sum = self.decoder([prev_token_id, code, s_tm1, prev_alpha_sum]);
             # token id = (batch, 1)
