@@ -97,9 +97,8 @@ def main():
         for data, tokens in testset:
             # skip the first start token, only use the following ground truth values
             expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
-            expected = tf.one_hot(expected, len(mathocr.token_to_id));
             _, logits = mathocr(data);
-            loss = tf.keras.losses.CategoricalCrossentropy(from_logits = True)(expected, logits);
+            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected, logits);
             eval_loss.update_state(loss);
         with log.as_default():
             tf.summary.scalar('eval loss',eval_loss.result(), step = optimizer.iterations);
