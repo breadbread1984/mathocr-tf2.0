@@ -180,7 +180,6 @@ class MathOCR(tf.keras.Model):
         # loop variables
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
-        out = tf.zeros((batch_num, len(self.token_to_id)), dtype = tf.float32);
         s_t = self.dense(tf.math.reduce_mean(low_res, axis = [1,2]));
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
@@ -225,7 +224,6 @@ class MathOCR(tf.keras.Model):
         # loop variables
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
-        out = tf.zeros((batch_num, len(self.token_to_id)), dtype = tf.float32);
         s_t = self.dense(tf.math.reduce_mean(low_res, axis = [1,2]));
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
