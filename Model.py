@@ -144,7 +144,7 @@ class MathOCR(tf.keras.Model):
     PAD = "<PAD>";
     SPECIAL_TOKENS = [START, END, PAD];
     
-    def __init__(self, input_shape = (128,128,1,), output_filters = 48, dropout_rate = 0.2, embedding_dim = 256, hidden_size = 256, tokens_length_max = 90):
+    def __init__(self, input_shape = (256,256,1,), output_filters = 48, dropout_rate = 0.2, embedding_dim = 256, hidden_size = 256, tokens_length_max = 90):
         
         super(MathOCR, self).__init__();
         with open('token_id_map.dat','rb') as f:
@@ -232,10 +232,7 @@ class MathOCR(tf.keras.Model):
 
         def step(i, prev_token_id, s_tm1, prev_alpha_sum_low, prev_alpha_sum_high):
             # previous.shape = (batch, 1)
-            prev_token_id = tf.cond(
-                tf.less(tf.random.uniform(shape=(), minval = 0, maxval = 1, dtype = tf.float32),0.5),
-                lambda: tokens[:,i:i+1], lambda: prev_token_id
-            );
+            prev_token_id = tokens[:,i:i+1];
             # predict Ua token
             cur_out, s_t, cur_attn_sum_low, cur_attn_sum_high = self.decoder([prev_token_id, low_res, high_res, s_tm1, prev_alpha_sum_low, prev_alpha_sum_high]);
             # token id = (batch, 1)

@@ -5,7 +5,7 @@ import pickle;
 import tensorflow as tf;
 from Model import MathOCR;
 
-batch_num = 8;
+batch_num = 4;
 tokens_length_max = 90;
 START = "<SOS>";
 END = "<EOS>";
@@ -46,7 +46,7 @@ def parse_function_generator(pad_code, crop = True, transform = True):
             hw = max_yx - min_yx;
             data = tf.image.crop_to_bounding_box(data, min_yx[0], min_yx[1], hw[0], hw[1]);
         if transform:
-            data = tf.image.resize(data, (128,128))
+            data = tf.image.resize(data, (256,256))
             
         # pad to fix length to enable batch
         tokens = tf.pad(tokens, paddings = [[0,tokens_length_max - tf.shape(tokens)[0]]], constant_values = pad_code);
