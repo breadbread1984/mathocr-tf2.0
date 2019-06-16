@@ -186,40 +186,36 @@ class MathOCR(tf.keras.Model):
         outputs = [''.join(sample) for sample in outputs]; 
         return outputs, logits_sequence;
 
-    def train(self, image, tokens):
+    def loss(self, image, tokens):
 
         img_shape = tf.shape(image);
         batch_num = img_shape[0];
-        # decoded sequence without without head
-        logits_sequence = [];
         # encode the input image
         code = self.encoder(image);
-        # loop variables
-        i = tf.constant(0);
-        token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
-        s_t = self.dense(tf.math.reduce_mean(code, axis = [1,2]));
-        alpha_sum = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
-
-        def step(i, prev_token_id, s_tm1, prev_alpha_sum):
-            # previous.shape = (batch, 1)
-            prev_token_id = tokens[:,i:i+1];
-            # predict Ua token
-            cur_out, s_t, cur_alpha_sum = self.decoder([prev_token_id, code, s_tm1, prev_alpha_sum]);
-            # token id = (batch, 1)
-            _, cur_token_id = tf.math.top_k(cur_out,1);
-            # cast value type
-            cur_token_id = tf.cast(cur_token_id, dtype = tf.int64);
-            # append logits
-            logits_sequence.append(tf.expand_dims(cur_out, axis = 1));
-            # increase counter
-            i = i + 1;
-            return i, cur_token_id, s_t, cur_alpha_sum;
-
-        tf.while_loop(lambda i, token_id, s_t, alpha_sum: tf.less(i,self.tokens_length_max - 1), 
-                      step, [i, token_id, s_t, alpha_sum]);
-        # decoded.shape = (batch, seq_length = 89, num_classes)
-        logits_sequence = tf.concat(logits_sequence, axis = 1);
-        return logits_sequence;
+        common_code = tf.reshape(
+            tf.tile(tf.expand_dims(code, axis = 1), (1, self.tokens_length_max - 2, 1, 1, 1)),
+            (-1, code.shape[-3], code.shape[-2], code.shape[-1])
+        ); # code.shape = (batch * (tokens_length_max - 2), code h, code w, code channel)
+        # prev_token.shape(batch * (token_length_max - 2),1)
+        prev_token0 = tf.reshape(tokens[:,0:self.tokens_length_max - 2],(-1,1));
+        prev_token1 = tf.reshape(tokens[:,1:self.tokens_length_max - 1],(-1,1));
+        # initial values of loop variables
+        s_t0 = self.dense(tf.math.reduce_mean(code, axis = [1,2]));
+        s_t0 = tf.reshape(
+            tf.tile(tf.expand_dims(s_t0, axis = 1), (1, self.tokens_length_max - 2, 1)),
+            (-1, self.hidden_size)
+        ); # s_t.shape = (batch * (tokens_length_max - 2), hidden_size)
+        alpha_sum0 = tf.zeros(
+            (batch_num * (self.tokens_length_max - 2), img_shape[1] // 16, img_shape[2] // 16, 1), 
+            dtype = tf.float32); # alpha_sum.shape = (batch * (tokens_length_max - 2), code h, code w, 1)
+        # propagation for 2 steps
+        out1, s_t1, alpha_sum1 = self.decoder([prev_token0, common_code, s_t0, alpha_sum0]);
+        out2, s_t2, alpha_sum2 = self.decoder([prev_token1, common_code, s_t1, alpha_sum1]);
+        # decoded.shape = (batch, tokens_length_max - 2, num_classes)
+        logits = tf.reshape(out2, (-1, self.tokens_length_max - 2, len(self.token_to_id)));
+        expected = tokens[:, 2:self.tokens_length_max];
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected, logits);
+        return loss;
 
 if __name__ == "__main__":
 
