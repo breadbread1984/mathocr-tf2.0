@@ -206,7 +206,7 @@ class MathOCR(tf.keras.Model):
             (-1, self.hidden_size)
         ); # s_t.shape = (batch * (tokens_length_max - 2), hidden_size)
         alpha_sum0 = tf.zeros(
-            (batch_num * (self.tokens_length_max - 2), img_shape[1] // 16, img_shape[2] // 16, 1), 
+            (batch_num * (self.tokens_length_max - 2), code.shape[-3], code.shape[-2], 1), 
             dtype = tf.float32); # alpha_sum.shape = (batch * (tokens_length_max - 2), code h, code w, 1)
         # propagation for 2 steps
         out1, s_t1, alpha_sum1 = self.decoder([prev_token0, common_code, s_t0, alpha_sum0]);
