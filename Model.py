@@ -93,6 +93,7 @@ class MathOCR(tf.keras.Model):
             self.token_to_id = pickle.load(f);
             self.id_to_token = pickle.load(f);
         assert len(self.token_to_id) == len(self.id_to_token);
+        self.tokens_length_max = tokens_length_max;
 
         self.encoder = DenseNet(input_shape[-3:]);
         self.decoder = Decoder(self.encoder.output.shape[1:], hidden_dim, len(self.token_to_id));
