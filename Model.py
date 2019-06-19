@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import pickle;
+import numpy as np;
 import tensorflow as tf;
 
 def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filters = 48, dropout_rate = 0.2):
@@ -114,7 +115,7 @@ class MathOCR(tf.keras.Model):
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
         l1_hidden = self.l2_dense(tf.math.reduce_mean(code, axis = [1,2]));
-        l2_hidden = self.embedding(token_id);
+        l2_hidden = tf.squeeze(self.embedding(token_id),1);
 
         def step(i, prev_l1_hidden, prev_l2_hidden):
             # predict Ua token
@@ -125,7 +126,7 @@ class MathOCR(tf.keras.Model):
             cur_token_id = tf.cast(cur_token_id, dtype = tf.int64);
             token_id_sequence.append(tf.expand_dims(cur_token_id, axis = 1));
             # append logits
-            logits_sequence.append(tf.expand_dims(cur_out, axis = 1));
+            logits_sequence.append(tf.expand_dims(logits, axis = 1));
             # increase counter
             i = i + 1;
             return i, l1_hidden, l2_hidden;
