@@ -4,65 +4,12 @@ import pickle;
 import numpy as np;
 import tensorflow as tf;
 
-def DenseNet(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filters = 48, dropout_rate = 0.2):
-    
-    # h,w of outA(low_res) = 1/16 h, 1/16 w of input's
-    # h,w of outB(high_res) = 1/8 h, 1/8 w of input's
-    inputs = tf.keras.Input(shape = input_shape);
-    results = tf.keras.layers.Conv2D(filters = output_filters, kernel_size = (7,7), strides = (2,2), padding = 'same')(inputs);
-    results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
-    results = tf.keras.layers.ReLU()(results);
-    # NOTE: height and width are halved
-    results = tf.keras.layers.MaxPool2D(pool_size = (2,2), strides = (2,2))(results);
-    for i in range(blocks):
-        # denseblock
-        for j in range(level):
-            shortcut = results;
-            # conv 1x1
-            results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1))(results);
-            results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
-            results = tf.keras.layers.ReLU()(results);
-            results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
-            # conv 3x3
-            results = tf.keras.layers.Conv2D(filters = growth_rate, kernel_size = (3,3), padding = 'same')(results);
-            results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
-            results = tf.keras.layers.ReLU()(results);
-            results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
-            # bottleneck out
-            results = tf.keras.layers.Concatenate()([shortcut, results]);
-        # transition
-        if i < blocks - 1:
-            results = tf.keras.layers.Conv2D(filters = results.shape[-1] // 2, kernel_size = (1,1))(results);
-            results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
-            results = tf.keras.layers.ReLU()(results);
-            results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
-            if i == blocks - 2: before_last_denseblock = results;
-            # NOTE: height and width are halved
-            results = tf.keras.layers.AveragePooling2D(pool_size = (2,2), strides = (2,2))(results);
+def Encoder(input_shape):
 
-    return tf.keras.Model(inputs = inputs, outputs = (results, before_last_denseblock));
-
-def Encoder(input_shape, blocks = 3, level = 16, growth_rate = 24, output_filters = 48, dropout_rate = 0.2):
-    
-    inputs = tf.keras.Input(shape = input_shape);
-    outA, results = DenseNet(inputs.shape[1:], blocks, level, growth_rate, output_filters, dropout_rate)(inputs);
-    for i in range(level):
-        shortcut = results;
-        # conv 1x1
-        results = tf.keras.layers.Conv2D(filters = 4 * growth_rate, kernel_size = (1,1))(results);
-        results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
-        results = tf.keras.layers.ReLU()(results);
-        results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
-        # conv 3x3
-        results = tf.keras.layers.Conv2D(filters = growth_rate, kernel_size = (3,3), padding = 'same')(results);
-        results = tf.keras.layers.BatchNormalization(momentum = 0.9, gamma_initializer = 'glorot_uniform', epsilon = 0.0001)(results);
-        results = tf.keras.layers.ReLU()(results);
-        results = tf.keras.layers.Dropout(rate = dropout_rate)(results);
-        # bottleneck out
-        results = tf.keras.layers.Concatenate()([shortcut, results]);
-    outB = results;
-
-    return tf.keras.Model(inputs = inputs, outputs = (outA, outB));
+    inputs = tf.keras.Input(input_shape[-3:]);
+    model = tf.keras.applications.MobileNetV2(input_tensor = inputs, weights='imagenet', include_top = False);
+    model.trainable = False;
+    return tf.keras.Model(inputs = inputs, outputs = (model.layers[-36].output,model.layers[-98].output));
 
 def CoverageAttention(code_shape, hat_s_t_shape, alpha_sum_shape, output_filters, kernel_size):
 
@@ -144,7 +91,7 @@ class MathOCR(tf.keras.Model):
     PAD = "<PAD>";
     SPECIAL_TOKENS = [START, END, PAD];
     
-    def __init__(self, input_shape = (256,256,1,), output_filters = 48, dropout_rate = 0.2, embedding_dim = 256, hidden_size = 256, tokens_length_max = 90):
+    def __init__(self, input_shape = (256,256,3,), output_filters = 48, dropout_rate = 0.2, embedding_dim = 256, hidden_size = 256, tokens_length_max = 90):
         
         super(MathOCR, self).__init__();
         with open('token_id_map.dat','rb') as f:
@@ -154,7 +101,7 @@ class MathOCR(tf.keras.Model):
         
         self.hidden_size = hidden_size;
         self.tokens_length_max = tokens_length_max;
-        self.encoder = Encoder(input_shape[-3:], 3, 16, 24, output_filters, dropout_rate);
+        self.encoder = Encoder(input_shape[-3:]);
         self.dense = tf.keras.layers.Dense(units = hidden_size, activation = tf.math.tanh);
         self.decoder = Decoder(
             self.encoder.outputs[0].shape[1:],

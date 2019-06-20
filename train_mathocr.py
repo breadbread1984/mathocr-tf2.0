@@ -46,7 +46,7 @@ def parse_function_generator(pad_code, crop = True, transform = True):
             hw = max_yx - min_yx;
             data = tf.image.crop_to_bounding_box(data, min_yx[0], min_yx[1], hw[0], hw[1]);
         if transform:
-            data = tf.image.resize(data, (256,256))
+            data = tf.image.resize(data, (128,128))
             
         # pad to fix length to enable batch
         tokens = tf.pad(tokens, paddings = [[0,tokens_length_max - tf.shape(tokens)[0]]], constant_values = pad_code);
@@ -56,7 +56,7 @@ def parse_function_generator(pad_code, crop = True, transform = True):
 def main():
     
     # networks
-    mathocr = MathOCR(tokens_length_max = tokens_length_max);
+    mathocr = MathOCR(input_shape = (128,128,3), tokens_length_max = tokens_length_max);
     # load dataset
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).batch(batch_num);
@@ -75,6 +75,7 @@ def main():
         for data, tokens in trainset:
             # skip the first start token, only use the following ground truth values
             expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+            data = tf.tile(data,(1,1,1,3));
             with tf.GradientTape() as tape:
                 logits = mathocr.train(data, tokens);
                 loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected, logits);
@@ -97,6 +98,7 @@ def main():
         for data, tokens in testset:
             # skip the first start token, only use the following ground truth values
             expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+            data = tf.tile(data,(1,1,1,3));
             _, logits = mathocr(data);
             loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected, logits);
             eval_loss.update_state(loss);
