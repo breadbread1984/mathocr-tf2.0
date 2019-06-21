@@ -3,7 +3,7 @@
 import os;
 import pickle;
 import tensorflow as tf;
-from Model import MathOCR;
+from Model import MathOCR, convert_to_readable;
 
 batch_num = 4;
 tokens_length_max = 90;
@@ -85,7 +85,8 @@ def main():
                     tf.summary.scalar('train loss',train_loss.result(), step = optimizer.iterations);
                     img = (data[0:1,...].numpy() * 255.).astype('uint8');
                     tf.summary.image('sampled image', img, step = optimizer.iterations);
-                    s, _ = mathocr(data[0:1,...]);
+                    token_id_sequence, _ = mathocr(data[0:1,...]);
+                    s = convert_to_readable(token_id_sequence, mathocr.id_to_token);
                     tf.summary.text('decoded latex',s, step = optimizer.iterations);
                 print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
                 train_loss.reset_states();

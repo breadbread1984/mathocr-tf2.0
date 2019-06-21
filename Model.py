@@ -218,8 +218,8 @@ if __name__ == "__main__":
         cv2.imshow('image',img);
         data = tf.expand_dims(data, 0);
         data = tf.tile(data,(1,1,1,3));
-        logits_sequence, _ = mathocr(data);
-        s = convert_to_readable(logits_sequence, mathocr.id_to_token);
+        token_id_sequence, _ = mathocr(data);
+        s = convert_to_readable(token_id_sequence, mathocr.id_to_token);
         print('predicted:',s);
         tokens = tf.expand_dims(tokens,0);
         inputs = tokens.numpy();
