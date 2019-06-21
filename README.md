@@ -1,6 +1,6 @@
 # mathocr-tf2.0
 
-OCR from manual written math equations to latex base on [math-formula-recognition](https://github.com/jungomi/math-formula-recognition)
+OCR from manual written math equations to latex base on the algorithm proposed in paper [Multi-Scale Attention with Dense Encoder for Handwritten Mathematical Expression Recognition](https://arxiv.org/pdf/1801.03530.pdf)
 
 ## prepare the dataset
 
