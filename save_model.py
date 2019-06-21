@@ -12,4 +12,3 @@ if __name__ == "__main__":
     mathocr.encoder.save('encoder.h5');
     mathocr.decoder.save('decoder.h5');
 
-

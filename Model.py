@@ -113,15 +113,17 @@ class MathOCR(tf.keras.Model):
             embedding_dim,
             hidden_size
         );
-        
+
+    @tf.function
     def call(self, image):
         
         img_shape = tf.shape(image);
         batch_num = img_shape[0];
         # whole sequence of token id
-        token_id_sequence = [tf.ones((batch_num,1,1), dtype = tf.int64) * self.token_to_id[self.START]];
+        token_id_sequence = tf.TensorArray(dtype = tf.int64, size = self.tokens_length_max, clear_after_read = False);
+        token_id_sequence.write(0,tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START]);
         # decoded sequence without without head
-        logits_sequence = [];
+        logits_sequence = tf.TensorArray(dtype = tf.float32, size = self.tokens_length_max - 1, clear_after_read = False);
         # encode the input image
         low_res, high_res = self.encoder(image);
         # loop variables
@@ -131,6 +133,7 @@ class MathOCR(tf.keras.Model):
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
 
+        @tf.function
         def step(i, prev_token_id, s_tm1, prev_alpha_sum_low, prev_alpha_sum_high):
             # predict Ua token
             cur_out, s_t, cur_attn_sum_low, cur_attn_sum_high = self.decoder([prev_token_id, low_res, high_res, s_tm1, prev_alpha_sum_low, prev_alpha_sum_high]);
@@ -138,9 +141,9 @@ class MathOCR(tf.keras.Model):
             _, cur_token_id = tf.math.top_k(cur_out,1);
             # append token id
             cur_token_id = tf.cast(cur_token_id, dtype = tf.int64);
-            token_id_sequence.append(tf.expand_dims(cur_token_id, axis = 1));
+            token_id_sequence.write(i + 1, tf.cast(cur_token_id, dtype = tf.int64));
             # append logits
-            logits_sequence.append(tf.expand_dims(cur_out, axis = 1));
+            logits_sequence.write(i, cur_out);
             # increase counter
             i = i + 1;
             return i, cur_token_id, s_t, cur_attn_sum_low, cur_attn_sum_high;
@@ -148,17 +151,10 @@ class MathOCR(tf.keras.Model):
         tf.while_loop(lambda i, token_id, s_t, alpha_sum_low, alpha_sum_high: tf.less(i,self.tokens_length_max - 1), 
                       step, [i, token_id, s_t, alpha_sum_low, alpha_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
-        logits_sequence = tf.concat(logits_sequence, axis = 1);
-        token_id_sequence = tf.concat(token_id_sequence, axis = 1);
+        logits_sequence = tf.transpose(logits_sequence.stack(), perm = (1,0,2));
+        token_id_sequence = tf.transpose(token_id_sequence.stack(), perm = (1,0,2));
 
-        # convert to readable string
-        inputs = token_id_sequence.numpy();
-        inputs_shape = inputs.shape;
-        flattened = np.reshape(inputs,(-1));
-        outputs = list(map(lambda x: self.id_to_token[x], flattened));
-        outputs = np.reshape(outputs,(inputs_shape[0],-1));
-        outputs = [''.join(sample) for sample in outputs]; 
-        return outputs, logits_sequence;
+        return token_id_sequence, logits_sequence;
 
     def train(self, image, tokens):
         
@@ -196,6 +192,17 @@ class MathOCR(tf.keras.Model):
         logits_sequence = tf.concat(logits_sequence, axis = 1);
         return logits_sequence;
 
+def convert_to_readable(token_id_sequence, id_to_token):
+
+    # convert to readable string
+    inputs = token_id_sequence.numpy();
+    inputs_shape = inputs.shape;
+    flattened = np.reshape(inputs,(-1));
+    outputs = list(map(lambda x: id_to_token[x], flattened));
+    outputs = np.reshape(outputs,(inputs_shape[0],-1));
+    outputs = [''.join(sample) for sample in outputs];
+    return outputs;
+
 if __name__ == "__main__":
     
     assert tf.executing_eagerly();
@@ -211,7 +218,8 @@ if __name__ == "__main__":
         cv2.imshow('image',img);
         data = tf.expand_dims(data, 0);
         data = tf.tile(data,(1,1,1,3));
-        s, _ = mathocr(data);
+        logits_sequence, _ = mathocr(data);
+        s = convert_to_readable(logits_sequence, mathocr.id_to_token);
         print('predicted:',s);
         tokens = tf.expand_dims(tokens,0);
         inputs = tokens.numpy();
