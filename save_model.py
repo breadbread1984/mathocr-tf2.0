@@ -11,4 +11,4 @@ if __name__ == "__main__":
     checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
     mathocr.encoder.save('encoder.h5');
     mathocr.decoder.save('decoder.h5');
-
+    mathocr.save_weights('mathocr.h5');
