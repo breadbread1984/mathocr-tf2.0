@@ -201,7 +201,7 @@ if __name__ == "__main__":
     assert tf.executing_eagerly();
     import cv2;
     from train_mathocr import parse_function_generator;
-    mathocr = MathOCR();
+    mathocr = MathOCR((128,128,3));
     optimizer = tf.keras.optimizers.Adam(1e-3);
     checkpoint = tf.train.Checkpoint(model = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
     checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
@@ -210,6 +210,7 @@ if __name__ == "__main__":
         img = (data.numpy() * 255.).astype('uint8');
         cv2.imshow('image',img);
         data = tf.expand_dims(data, 0);
+        data = tf.tile(data,(1,1,1,3));
         s, _ = mathocr(data);
         print('predicted:',s);
         tokens = tf.expand_dims(tokens,0);
