@@ -22,6 +22,8 @@ Train the model by executing the following command
 ```python
 python3 train_mathocr.py
 ```
+A trained model is available [here](https://drive.google.com/open?id=1CZvUkogoL8ytTFgMw0bibHh_0VBoKbt5)
+
 ## convert checkpoint to hdf5 model
 
 Convert the model with the command
@@ -36,5 +38,12 @@ Convert the model with the command
 
 ```python
 python3 convert_model.py
+```
+## test the trained model
+
+Executing the following command to see the prediction result of evaluation dataset.
+
+```python
+python3 Model.py
 ```
 
