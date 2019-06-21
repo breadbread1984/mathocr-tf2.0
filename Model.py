@@ -25,7 +25,7 @@ def CoverageAttention(code_shape, hat_s_t_shape, alpha_sum_shape, output_filters
     # Us.shape = (batch, 1, 1, 512)
     Us = tf.keras.layers.Reshape((1,1,hat_s_t.shape[-1],))(hat_s_t);
     # response.shape = (batch, input_height, input_width, 512)
-    Us = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,code.shape[1],code.shape[2],1)))(Us);
+    Us = tf.keras.layers.Lambda(lambda x,h,w: tf.tile(x, (1,h,w,1)), arguments={'h':code.shape[1],'w':code.shape[2]})(Us);
     s = tf.keras.layers.Add()([Us,Ua,Uf]);
     response = tf.keras.layers.Lambda(lambda x: tf.math.tanh(x))(s);
     # e_t.shape = (batch, input_height, input_width, 1)
@@ -36,7 +36,7 @@ def CoverageAttention(code_shape, hat_s_t_shape, alpha_sum_shape, output_filters
     alpha_t = tf.keras.layers.Reshape((code.shape[1], code.shape[2], 1,))(alpha_t);
     new_alpha_sum = tf.keras.layers.Add()([alpha_sum, alpha_t]);
     # weighted_inputs.shape = (batch, input_height, input_width, input_filters)
-    alpha_t = tf.keras.layers.Lambda(lambda x: tf.tile(x, (1,1,1,code.shape[-1])))(alpha_t);
+    alpha_t = tf.keras.layers.Lambda(lambda x,c: tf.tile(x, (1,1,1,c)), arguments={'c':code.shape[-1]})(alpha_t);
     weighted_inputs = tf.keras.layers.Multiply()([alpha_t, code]);
     # context.shape = (batch, input_filters)
     context = tf.keras.layers.Lambda(lambda x: tf.math.reduce_sum(x, axis = [1,2]))(weighted_inputs);
