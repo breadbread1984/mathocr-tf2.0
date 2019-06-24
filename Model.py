@@ -84,6 +84,13 @@ def Decoder(low_res_shape, high_res_shape, hidden_shape, attn_sum_low_shape, att
     out = tf.keras.layers.Dense(units = num_classes)(out);
     return tf.keras.Model(inputs = (prev_token, low_res, high_res, s_tm1, alpha_sum_low, alpha_sum_high), outputs = (out, s_t, new_attn_sum_low, new_attn_sum_high));
 
+def Status0Predictor(input_shape, hidden_size):
+
+    inputs = tf.keras.Input(shape = input_shape);
+    results = tf.keras.layers.Lambda(lambda x: tf.math.reduce_mean(x, axis = [1,2]))(inputs);
+    results = tf.keras.layers.Dense(units = hidden_size, activation = tf.math.tanh)(results);
+    return tf.keras.Model(inputs = inputs, outputs = results);
+
 class MathOCR(tf.keras.Model):
     
     START = "<SOS>";
@@ -102,7 +109,7 @@ class MathOCR(tf.keras.Model):
         self.hidden_size = hidden_size;
         self.tokens_length_max = tokens_length_max;
         self.encoder = Encoder(input_shape[-3:]);
-        self.dense = tf.keras.layers.Dense(units = hidden_size, activation = tf.math.tanh);
+        self.status_zero_predictor = Status0Predictor(self.encoder.outputs[0].shape[1:], hidden_size);
         self.decoder = Decoder(
             self.encoder.outputs[0].shape[1:],
             self.encoder.outputs[1].shape[1:],
@@ -127,7 +134,7 @@ class MathOCR(tf.keras.Model):
         # loop variables
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
-        s_t = self.dense(tf.math.reduce_mean(low_res, axis = [1,2]));
+        s_t = self.status_zero_predictor(low_res);
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
 
@@ -164,7 +171,7 @@ class MathOCR(tf.keras.Model):
         # loop variables
         i = tf.constant(0);
         token_id = tf.ones((batch_num,1), dtype = tf.int64) * self.token_to_id[self.START];
-        s_t = self.dense(tf.math.reduce_mean(low_res, axis = [1,2]));
+        s_t = self.status_zero_predictor(low_res);
         alpha_sum_low = tf.zeros(img_shape // (1, 16, 16, img_shape[-1]), dtype = tf.float32);
         alpha_sum_high = tf.zeros(img_shape // (1, 8, 8, img_shape[-1]), dtype = tf.float32);
 
@@ -208,10 +215,10 @@ if __name__ == "__main__":
     assert tf.executing_eagerly();
     import cv2;
     from train_mathocr import parse_function_generator;
+
     mathocr = MathOCR((128,128,3));
-    optimizer = tf.keras.optimizers.Adam(1e-3);
-    checkpoint = tf.train.Checkpoint(model = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
-    checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
+    mathocr.load_weights('mathocr.h5');
+
     testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
     for data, tokens in testset:
         img = (data.numpy() * 255.).astype('uint8');

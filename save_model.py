@@ -6,9 +6,7 @@ from Model import MathOCR;
 if __name__ == "__main__":
 
     mathocr = MathOCR();
-    optimizer = tf.keras.optimizers.Adam(1e-3);
+    optimizer = tf.keras.optimizers.Adam(1e-3, decay = 1e-4);
     checkpoint = tf.train.Checkpoint(model = mathocr, optimizer = optimizer, optimizer_step = optimizer.iterations);
     checkpoint.restore(tf.train.latest_checkpoint('checkpoint'));
-    mathocr.encoder.save('encoder.h5');
-    mathocr.decoder.save('decoder.h5');
     mathocr.save_weights('mathocr.h5');
