@@ -92,7 +92,8 @@ def main():
                 train_loss.reset_states();
                 # save model every 100 iteration
                 checkpoint.save(os.path.join('checkpoint','ckpt'));
-                mathocr.save_weights('mathocr.h5');
+                if False == os.path.exists('models'): os.mkdir('models');
+                mathocr.save_weights('models/mathocr_%d.h5' % optimizer.iterations);
             grads = tape.gradient(loss, mathocr.trainable_variables);
             optimizer.apply_gradients(zip(grads, mathocr.trainable_variables));
         if loss < 0.01: break;
