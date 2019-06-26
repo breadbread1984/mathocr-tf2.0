@@ -1,0 +1,7 @@
+#!/bin/sh
+mkdir -p /etc/supervisor.d/
+
+mkdir -p /root/logs
+touch /root/logs/supervisord.log
+touch /root/logs/err.log
+touch /root/logs/out.log
