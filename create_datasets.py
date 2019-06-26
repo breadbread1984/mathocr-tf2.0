@@ -134,8 +134,20 @@ if __name__ == "__main__":
     );
     dataset.generate_tfrecord('trainset.tfrecord');
     dataset = CrohmeDataset(
+        groundtruth = './CROHME-png/groundtruth_2013.tsv',
+        tokens_file = './CROHME-png/tokens.tsv',
+        root = './CROHME-png/test/2013'
+    );
+    dataset.generate_tfrecord('testset_2013.tfrecord');
+    dataset = CrohmeDataset(
+        groundtruth = './CROHME-png/groundtruth_2014.tsv',
+        tokens_file = './CROHME-png/tokens.tsv',
+        root = './CROHME-png/test/2014'
+    );
+    dataset.generate_tfrecord('testset_2014.tfrecord');
+    dataset = CrohmeDataset(
         groundtruth = './CROHME-png/groundtruth_2016.tsv',
         tokens_file = './CROHME-png/tokens.tsv',
         root = './CROHME-png/test/2016'
     );
-    dataset.generate_tfrecord('testset.tfrecord');
+    dataset.generate_tfrecord('testset_2016.tfrecord');

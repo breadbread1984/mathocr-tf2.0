@@ -219,7 +219,7 @@ if __name__ == "__main__":
     mathocr = MathOCR((128,128,3));
     mathocr.load_weights('mathocr.h5');
 
-    testset = tf.data.TFRecordDataset('testset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
+    testset = tf.data.TFRecordDataset('testset_2016.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
     for data, tokens in testset:
         img = (data.numpy() * 255.).astype('uint8');
         cv2.imshow('image',img);
