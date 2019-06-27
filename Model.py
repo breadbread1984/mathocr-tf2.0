@@ -152,7 +152,13 @@ class MathOCR(tf.keras.Model):
             i = i + 1;
             return i, cur_token_id, s_t, cur_attn_sum_low, cur_attn_sum_high;
             
-        tf.while_loop(lambda i, token_id, s_t, alpha_sum_low, alpha_sum_high: tf.less(i,self.tokens_length_max - 1), 
+        tf.while_loop(lambda i, token_id, s_t, alpha_sum_low, alpha_sum_high:
+                        tf.math.reduce_any(
+                            tf.math.logical_not(tf.math.logical_or(
+                                tf.equal(token_id,self.token_to_id[self.END]),
+                                tf.equal(token_id,self.token_to_id[self.PAD])
+                            ))
+                        ),
                       step, [i, token_id, s_t, alpha_sum_low, alpha_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
         logits_sequence = tf.concat(logits_sequence, axis = 1);
@@ -217,7 +223,7 @@ if __name__ == "__main__":
     from train_mathocr import parse_function_generator;
 
     mathocr = MathOCR((128,128,3));
-    mathocr.load_weights('mathocr.h5');
+    mathocr.load_weights('models/mathocr_12200.h5');
 
     testset = tf.data.TFRecordDataset('testset_2016.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
     for data, tokens in testset:
