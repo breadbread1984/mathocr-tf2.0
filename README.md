@@ -2,6 +2,10 @@
 
 OCR from manual written math equations to latex base on the algorithm proposed in paper [Multi-Scale Attention with Dense Encoder for Handwritten Mathematical Expression Recognition](https://arxiv.org/pdf/1801.03530.pdf)
 
+## Model of Multi-scale watch-attend-parse model
+
+![model](pics/Model.svg)
+
 ## prepare the dataset
 
 The dataset is from [CROHME: Competition on Recognition of Online Handwritten Mathematical
