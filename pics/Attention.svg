@@ -33,6 +33,7 @@
    <glyph unicode="a" horiz-adv-x="1059" d="M 414,-20 C 305,-20 224,9 169,66 114,123 87,202 87,302 87,414 124,500 198,560 271,620 390,652 554,656 L 797,660 797,719 C 797,807 778,870 741,908 704,946 645,965 565,965 484,965 426,951 389,924 352,897 330,853 323,793 L 135,810 C 166,1005 310,1102 569,1102 705,1102 807,1071 876,1009 945,946 979,856 979,738 L 979,272 C 979,219 986,179 1000,152 1014,125 1041,111 1080,111 1097,111 1117,113 1139,118 L 1139,6 C 1094,-5 1047,-10 1000,-10 933,-10 885,8 855,43 824,78 807,132 803,207 L 797,207 C 751,124 698,66 637,32 576,-3 501,-20 414,-20 Z M 455,115 C 521,115 580,130 631,160 682,190 723,231 753,284 782,336 797,390 797,445 L 797,534 600,530 C 515,529 451,520 408,504 364,488 330,463 307,430 284,397 272,353 272,299 272,240 288,195 320,163 351,131 396,115 455,115 Z"/>
    <glyph unicode="T" horiz-adv-x="1166" d="M 720,1253 L 720,0 530,0 530,1253 46,1253 46,1409 1204,1409 1204,1253 720,1253 Z"/>
    <glyph unicode="S" horiz-adv-x="1207" d="M 1272,389 C 1272,259 1221,158 1120,87 1018,16 875,-20 690,-20 347,-20 148,99 93,338 L 278,375 C 299,290 345,228 414,189 483,149 578,129 697,129 820,129 916,150 983,193 1050,235 1083,297 1083,379 1083,425 1073,462 1052,491 1031,520 1001,543 963,562 925,581 880,596 827,609 774,622 716,635 652,650 541,675 456,699 399,724 341,749 295,776 262,807 229,837 203,872 186,913 168,954 159,1000 159,1053 159,1174 205,1267 298,1332 390,1397 522,1430 694,1430 854,1430 976,1406 1061,1357 1146,1308 1205,1224 1239,1106 L 1051,1073 C 1030,1148 991,1202 933,1236 875,1269 795,1286 692,1286 579,1286 493,1267 434,1230 375,1193 345,1137 345,1063 345,1020 357,984 380,956 403,927 436,903 479,884 522,864 609,840 738,811 781,801 825,791 868,781 911,770 952,758 991,744 1030,729 1067,712 1102,693 1136,674 1166,650 1191,622 1216,594 1236,561 1251,523 1265,485 1272,440 1272,389 Z"/>
+   <glyph unicode="R" horiz-adv-x="1229" d="M 1164,0 L 798,585 359,585 359,0 168,0 168,1409 831,1409 C 990,1409 1112,1374 1199,1303 1285,1232 1328,1133 1328,1006 1328,901 1298,813 1237,742 1176,671 1091,626 984,607 L 1384,0 1164,0 Z M 1136,1004 C 1136,1086 1108,1149 1053,1192 997,1235 917,1256 812,1256 L 359,1256 359,736 820,736 C 921,736 999,760 1054,807 1109,854 1136,919 1136,1004 Z"/>
    <glyph unicode="D" horiz-adv-x="1229" d="M 1381,719 C 1381,574 1353,447 1296,338 1239,229 1159,145 1055,87 951,29 831,0 695,0 L 168,0 168,1409 634,1409 C 873,1409 1057,1349 1187,1230 1316,1110 1381,940 1381,719 Z M 1189,719 C 1189,894 1141,1027 1046,1119 950,1210 811,1256 630,1256 L 359,1256 359,153 673,153 C 776,153 867,176 946,221 1024,266 1084,332 1126,417 1168,502 1189,603 1189,719 Z"/>
    <glyph unicode="C" horiz-adv-x="1313" d="M 792,1274 C 636,1274 515,1224 428,1124 341,1023 298,886 298,711 298,538 343,400 434,295 524,190 646,137 800,137 997,137 1146,235 1245,430 L 1401,352 C 1343,231 1262,138 1157,75 1052,12 930,-20 791,-20 649,-20 526,10 423,69 319,128 240,212 186,322 131,431 104,561 104,711 104,936 165,1112 286,1239 407,1366 575,1430 790,1430 940,1430 1065,1401 1166,1342 1267,1283 1341,1196 1388,1081 L 1207,1021 C 1174,1103 1122,1166 1050,1209 977,1252 891,1274 792,1274 Z"/>
    <glyph unicode="B" horiz-adv-x="1102" d="M 1258,397 C 1258,272 1212,174 1121,105 1030,35 903,0 740,0 L 168,0 168,1409 680,1409 C 1011,1409 1176,1295 1176,1067 1176,984 1153,914 1106,857 1059,800 993,762 908,743 1020,730 1106,692 1167,631 1228,569 1258,491 1258,397 Z M 984,1044 C 984,1120 958,1174 906,1207 854,1240 779,1256 680,1256 L 359,1256 359,810 680,810 C 782,810 858,829 909,868 959,906 984,965 984,1044 Z M 1065,412 C 1065,578 948,661 715,661 L 359,661 359,153 730,153 C 847,153 932,175 985,218 1038,261 1065,326 1065,412 Z"/>
@@ -113,7 +114,7 @@
       </g>
       <g class="com.sun.star.drawing.CustomShape">
        <g id="id4">
-        <rect class="BoundingBox" stroke="none" fill="none" x="13744" y="16850" width="2357" height="1051"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="13743" y="16850" width="2358" height="1051"/>
         <g>
          <defs>
           <linearGradient id="gradient2" x1="14399" y1="16471" x2="15443" y2="18278" gradientUnits="userSpaceOnUse">
@@ -138,12 +139,12 @@
          </defs>
          <path style="fill:url(#gradient3)" d="M 10426,16850 L 10740,16860 11030,16890 11290,16937 11407,16967 11515,17001 11612,17038 11699,17078 11774,17121 11837,17167 11887,17215 11907,17241 11924,17266 11937,17292 11946,17319 11952,17346 11954,17374 11952,17402 11946,17429 11937,17456 11924,17482 11907,17508 11887,17533 11837,17581 11774,17627 11699,17671 11612,17711 11515,17748 11407,17781 11290,17811 11030,17859 10740,17889 10426,17899 10112,17889 9822,17859 9562,17811 9445,17781 9338,17748 9240,17711 9154,17671 9079,17627 9016,17581 8966,17533 8946,17508 8929,17482 8916,17456 8907,17429 8901,17402 8899,17374 8901,17346 8907,17319 8916,17292 8929,17266 8946,17241 8966,17215 9016,17167 9079,17121 9154,17078 9240,17038 9338,17001 9445,16967 9562,16937 9822,16890 10112,16860 10426,16850 Z"/>
         </g>
-        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="423px" font-weight="400"><tspan class="TextPosition" x="9446" y="17523"><tspan fill="rgb(0,0,0)" stroke="none">alpha sum</tspan></tspan></tspan></text>
+        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="423px" font-weight="400"><tspan class="TextPosition" x="9150" y="17523"><tspan fill="rgb(0,0,0)" stroke="none">attention sum</tspan></tspan></tspan></text>
        </g>
       </g>
       <g class="com.sun.star.drawing.CustomShape">
        <g id="id6">
-        <rect class="BoundingBox" stroke="none" fill="none" x="18044" y="16850" width="2357" height="1051"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="18043" y="16850" width="2358" height="1051"/>
         <g>
          <defs>
           <linearGradient id="gradient4" x1="18699" y1="16471" x2="19743" y2="18278" gradientUnits="userSpaceOnUse">
@@ -158,7 +159,7 @@
       </g>
       <g class="com.sun.star.drawing.CustomShape">
        <g id="id7">
-        <rect class="BoundingBox" stroke="none" fill="none" x="9328" y="14740" width="2173" height="962"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="9328" y="14740" width="2173" height="963"/>
         <g>
          <defs>
           <linearGradient id="gradient5" x1="9933" y1="14389" x2="10893" y2="16051" gradientUnits="userSpaceOnUse">
@@ -224,7 +225,7 @@
       </g>
       <g class="com.sun.star.drawing.CustomShape">
        <g id="id13">
-        <rect class="BoundingBox" stroke="none" fill="none" x="14498" y="12527" width="796" height="674"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="14499" y="12528" width="795" height="673"/>
         <g>
          <defs>
           <linearGradient id="gradient8" x1="14651" y1="12440" x2="15140" y2="13286" gradientUnits="userSpaceOnUse">
@@ -326,7 +327,7 @@
       </g>
       <g class="com.sun.star.drawing.CustomShape">
        <g id="id23">
-        <rect class="BoundingBox" stroke="none" fill="none" x="9699" y="4350" width="3057" height="1051"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="9699" y="4350" width="3058" height="1051"/>
         <g>
          <defs>
           <linearGradient id="gradient12" x1="10617" y1="3819" x2="11836" y2="5930" gradientUnits="userSpaceOnUse">
@@ -336,7 +337,7 @@
          </defs>
          <path style="fill:url(#gradient12)" d="M 11226,4350 L 11540,4360 11830,4390 12090,4437 12207,4467 12315,4501 12412,4538 12499,4578 12574,4621 12637,4667 12687,4715 12707,4741 12724,4766 12737,4792 12746,4819 12752,4846 12754,4874 12752,4902 12746,4929 12737,4956 12724,4982 12707,5008 12687,5033 12637,5081 12574,5127 12499,5171 12412,5211 12315,5248 12207,5281 12090,5311 11830,5359 11540,5389 11226,5399 10912,5389 10622,5359 10362,5311 10245,5281 10138,5248 10040,5211 9954,5171 9879,5127 9816,5081 9766,5033 9746,5008 9729,4982 9716,4956 9707,4929 9701,4902 9699,4874 9701,4846 9707,4819 9716,4792 9729,4766 9746,4741 9766,4715 9816,4667 9879,4621 9954,4578 10040,4538 10138,4501 10245,4467 10362,4437 10622,4390 10912,4360 11226,4350 Z"/>
         </g>
-        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="423px" font-weight="400"><tspan class="TextPosition" x="10246" y="5023"><tspan fill="rgb(0,0,0)" stroke="none">alpha sum</tspan></tspan></tspan></text>
+        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="423px" font-weight="400"><tspan class="TextPosition" x="10009" y="5023"><tspan fill="rgb(0,0,0)" stroke="none">attenion sum</tspan></tspan></tspan></text>
        </g>
       </g>
       <g class="com.sun.star.drawing.LineShape">
@@ -370,7 +371,7 @@
       </g>
       <g class="com.sun.star.drawing.PolyLineShape">
        <g id="id27">
-        <rect class="BoundingBox" stroke="none" fill="none" x="7999" y="6711" width="2903" height="10591"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="7999" y="6712" width="2903" height="10590"/>
         <path fill="none" stroke="rgb(52,101,164)" d="M 8900,17300 L 8000,17300 8100,6800 10648,6800"/>
         <path fill="rgb(52,101,164)" stroke="none" d="M 10900,6800 L 10636,6712 10636,6888 10900,6800 Z"/>
        </g>
@@ -421,14 +422,14 @@
       </g>
       <g class="com.sun.star.drawing.PolyLineShape">
        <g id="id32">
-        <rect class="BoundingBox" stroke="none" fill="none" x="20399" y="7100" width="1803" height="10302"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="20399" y="7099" width="1803" height="10303"/>
         <path fill="none" stroke="rgb(52,101,164)" d="M 20400,17400 L 22200,17400 22102,7352"/>
         <path fill="rgb(52,101,164)" stroke="none" d="M 22100,7100 L 22015,7365 22191,7363 22100,7100 Z"/>
        </g>
       </g>
       <g class="com.sun.star.drawing.CustomShape">
        <g id="id33">
-        <rect class="BoundingBox" stroke="none" fill="none" x="21028" y="4444" width="2173" height="962"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="21028" y="4444" width="2173" height="963"/>
         <g>
          <defs>
           <linearGradient id="gradient16" x1="21633" y1="4093" x2="22593" y2="5755" gradientUnits="userSpaceOnUse">
@@ -438,7 +439,7 @@
          </defs>
          <path style="fill:url(#gradient16)" d="M 22113,4444 L 22336,4453 22542,4481 22637,4501 22727,4524 22810,4551 22887,4582 22956,4616 23018,4653 23071,4692 23116,4734 23151,4779 23166,4802 23178,4825 23187,4849 23194,4874 23198,4899 23199,4924 23198,4949 23194,4974 23187,4999 23178,5023 23166,5046 23151,5069 23116,5114 23071,5156 23018,5195 22956,5232 22887,5266 22810,5297 22727,5324 22637,5347 22542,5367 22336,5395 22113,5404 21890,5395 21684,5367 21589,5347 21499,5324 21416,5297 21340,5266 21271,5232 21209,5195 21156,5156 21111,5114 21075,5069 21061,5046 21049,5023 21040,4999 21033,4974 21029,4949 21028,4924 21029,4899 21033,4874 21040,4849 21049,4825 21061,4802 21075,4779 21111,4734 21156,4692 21209,4653 21271,4616 21340,4582 21416,4551 21499,4524 21589,4501 21684,4481 21890,4453 22113,4444 Z"/>
         </g>
-        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="423px" font-weight="400"><tspan class="TextPosition" x="21463" y="5072"><tspan fill="rgb(0,0,0)" stroke="none">reduce</tspan></tspan></tspan></text>
+        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="423px" font-weight="400"><tspan class="TextPosition" x="21381" y="4835"><tspan fill="rgb(0,0,0)" stroke="none">Spatial</tspan></tspan></tspan><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="423px" font-weight="400"><tspan class="TextPosition" x="21381" y="5309"><tspan fill="rgb(0,0,0)" stroke="none">Reduce</tspan></tspan></tspan></text>
        </g>
       </g>
       <g class="com.sun.star.drawing.LineShape">
