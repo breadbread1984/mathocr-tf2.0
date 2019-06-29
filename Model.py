@@ -121,7 +121,7 @@ class MathOCR(tf.keras.Model):
             hidden_size
         );
 
-    def call(self, image):
+    def call(self, image, maxlen = 100):
         
         img_shape = tf.shape(image);
         batch_num = img_shape[0];
@@ -153,11 +153,14 @@ class MathOCR(tf.keras.Model):
             return i, cur_token_id, s_t, cur_attn_sum_low, cur_attn_sum_high;
             
         tf.while_loop(lambda i, token_id, s_t, alpha_sum_low, alpha_sum_high:
-                        tf.math.reduce_any(
-                            tf.math.logical_not(tf.math.logical_or(
-                                tf.equal(token_id,self.token_to_id[self.END]),
-                                tf.equal(token_id,self.token_to_id[self.PAD])
-                            ))
+                        tf.math.logical_and(    
+                            tf.math.reduce_any(
+                                tf.math.logical_not(tf.math.logical_or(
+                                    tf.equal(token_id,self.token_to_id[self.END]),
+                                    tf.equal(token_id,self.token_to_id[self.PAD])
+                                ))
+                            ),
+                            tf.less(i,maxlen)
                         ),
                       step, [i, token_id, s_t, alpha_sum_low, alpha_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
