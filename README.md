@@ -5,6 +5,7 @@ OCR from manual written math equations to latex base on the algorithm proposed i
 ## Model of Multi-scale watch-attend-parse model
 
 ![model](pics/Model.svg)
+![attention](pics/Attention.svg)
 
 ## prepare the dataset
 
