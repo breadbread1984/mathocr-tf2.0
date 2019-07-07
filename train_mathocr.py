@@ -6,7 +6,10 @@ import tensorflow as tf;
 from Model import MathOCR, convert_to_readable;
 
 batch_num = 4;
-tokens_length_max = 90;
+#tokens_length_max = 66; # testset_2013
+tokens_length_max = 206; # testset_2014
+#tokens_length_max = 80; # testset 2016
+#tokens_length_max = 90; # trainset
 START = "<SOS>";
 END = "<EOS>";
 PAD = "<PAD>";
@@ -59,7 +62,9 @@ def main():
     mathocr = MathOCR(input_shape = (128,128,3), tokens_length_max = tokens_length_max);
     # load dataset
     trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
-    testset = tf.data.TFRecordDataset('testset_2016.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).batch(batch_num);
+    testset_2013 = tf.data.TFRecordDataset('testset_2013.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
+    testset_2014 = tf.data.TFRecordDataset('testset_2014.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
+    testset_2016 = tf.data.TFRecordDataset('testset_2016.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
     # checkpoints utilities
     optimizer = tf.keras.optimizers.Adam(1e-3, decay = 1e-4);
     if False == os.path.exists('checkpoint'): os.mkdir('checkpoint');
@@ -69,48 +74,59 @@ def main():
     train_loss = tf.keras.metrics.Mean(name = 'train loss', dtype = tf.float32);
     eval_loss = tf.keras.metrics.Mean(name = 'eval loss', dtype = tf.float32);
     log = tf.summary.create_file_writer('checkpoint');
+
+    def train(data,tokens):
+        # skip the first start token, only use the following ground truth values
+        expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+        data = tf.tile(data,(1,1,1,3));
+        with tf.GradientTape() as tape:
+            logits = mathocr.train(data, tokens);
+            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected, logits);
+        train_loss.update_state(loss);
+        if tf.equal(optimizer.iterations % 100, 0):
+            with log.as_default():
+                tf.summary.scalar('train loss',train_loss.result(), step = optimizer.iterations);
+                img = (data[0:1,...].numpy() * 255.).astype('uint8');
+                tf.summary.image('sampled image', img, step = optimizer.iterations);
+                token_id_sequence, _ = mathocr(data[0:1,...]);
+                s = convert_to_readable(token_id_sequence, mathocr.id_to_token);
+                tf.summary.text('decoded latex',s, step = optimizer.iterations);
+            print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
+            train_loss.reset_states();
+            # save model every 100 iteration
+            checkpoint.save(os.path.join('checkpoint','ckpt'));
+            if False == os.path.exists('models'): os.mkdir('models');
+            mathocr.save_weights('models/mathocr_%d.h5' % optimizer.iterations);
+        grads = tape.gradient(loss, mathocr.trainable_variables);
+        optimizer.apply_gradients(zip(grads, mathocr.trainable_variables));
+        return loss;
+
+    def eval(data,tokens):
+        # skip the first start token, only use the following ground truth values
+        expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+        data = tf.tile(data,(1,1,1,3));
+        _, logits = mathocr(data);
+        length = tf.math.reduce_min([expected.shape[1],logits.shape[1]]);
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected[:,:length], logits[:,:length,:]);
+        eval_loss.update_state(loss);
+
     while True:
         # data.shape = (batch, 128, 128, 1)
         # tokens.shape = (batch, tokens_length_max = 90)
         for data, tokens in trainset:
-            # skip the first start token, only use the following ground truth values
-            expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
-            data = tf.tile(data,(1,1,1,3));
-            with tf.GradientTape() as tape:
-                logits = mathocr.train(data, tokens);
-                loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected, logits);
-            train_loss.update_state(loss);
-            if tf.equal(optimizer.iterations % 100, 0):
-                with log.as_default():
-                    tf.summary.scalar('train loss',train_loss.result(), step = optimizer.iterations);
-                    img = (data[0:1,...].numpy() * 255.).astype('uint8');
-                    tf.summary.image('sampled image', img, step = optimizer.iterations);
-                    token_id_sequence, _ = mathocr(data[0:1,...]);
-                    s = convert_to_readable(token_id_sequence, mathocr.id_to_token);
-                    tf.summary.text('decoded latex',s, step = optimizer.iterations);
-                print('Step #%d Loss: %.6f' % (optimizer.iterations, train_loss.result()));
-                train_loss.reset_states();
-                # save model every 100 iteration
-                checkpoint.save(os.path.join('checkpoint','ckpt'));
-                if False == os.path.exists('models'): os.mkdir('models');
-                mathocr.save_weights('models/mathocr_%d.h5' % optimizer.iterations);
-            grads = tape.gradient(loss, mathocr.trainable_variables);
-            optimizer.apply_gradients(zip(grads, mathocr.trainable_variables));
-        if loss < 0.01: break;
-        # evaluate on testset
-        for data, tokens in testset:
-            # skip the first start token, only use the following ground truth values
-            expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
-            data = tf.tile(data,(1,1,1,3));
-            _, logits = mathocr(data);
-            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True)(expected, logits);
-            eval_loss.update_state(loss);
+            loss = train(data,tokens);
+        if loss < 0.001: break;
+        for data, tokens in testset_2013:
+            loss = train(data,tokens);
+        if loss < 0.001: break;
+        for data, tokens in testset_2014:
+            loss = train(data,tokens);
+        if loss < 0.001: break;
+        for data, tokens in testset_2016:
+            eval(data,tokens);
         with log.as_default():
-            tf.summary.scalar('eval loss',eval_loss.result(), step = optimizer.iterations);
+            tf.summary.scalar('eval loss 2016',eval_loss.result(), step = optimizer.iterations);
         eval_loss.reset_states();
-    # save the network structure with weights
-    mathocr.encoder.save('encoder.h5');
-    mathocr.decoder.save('decoder.h5');
     # subclassing model mathocr can only save weights
     mathocr.save_weights('mathocr.h5');
 
