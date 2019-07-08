@@ -3,7 +3,7 @@
 import cv2;
 import numpy as np;
 import tensorflow as tf;
-from Model import MathOCR;
+from Model import MathOCR, convert_to_readable;
 
 class Predictor(object):
 
@@ -36,7 +36,7 @@ class Predictor(object):
         data = tf.expand_dims(data, 0);
         # feed to predictor
         token_id_sequence, _ = self.mathocr(data);
-        s = convert_to_readable(token_id_sequence, mathocr.id_to_token);
+        s = convert_to_readable(token_id_sequence, self.mathocr.id_to_token);
         return s;
 
 if __name__ == "__main__":
