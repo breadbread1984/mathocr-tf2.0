@@ -42,6 +42,7 @@ if __name__ == "__main__":
     assert tf.executing_eagerly();
     predictor = Predictor();
     img = cv2.imread('pics/handwritting1.jpg');
+    assert img is not None, "can't open image!";
     output = predictor.predict(img);
     print(output);
 
