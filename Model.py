@@ -98,7 +98,7 @@ class MathOCR(tf.keras.Model):
     PAD = "<PAD>";
     SPECIAL_TOKENS = [START, END, PAD];
     
-    def __init__(self, input_shape = (256,256,3,), output_filters = 48, dropout_rate = 0.2, embedding_dim = 256, hidden_size = 256, tokens_length_max = 90):
+    def __init__(self, input_shape = (256,256,3,), output_filters = 48, dropout_rate = 0.2, embedding_dim = 256, hidden_size = 256):
         
         super(MathOCR, self).__init__();
         with open('token_id_map.dat','rb') as f:
@@ -107,7 +107,6 @@ class MathOCR(tf.keras.Model):
         assert len(self.token_to_id) == len(self.id_to_token);
         
         self.hidden_size = hidden_size;
-        self.tokens_length_max = tokens_length_max;
         self.encoder = Encoder(input_shape[-3:]);
         self.status_zero_predictor = Status0Predictor(self.encoder.outputs[0].shape[1:], hidden_size);
         self.decoder = Decoder(
@@ -202,7 +201,7 @@ class MathOCR(tf.keras.Model):
             i = i + 1;
             return i, cur_token_id, s_t, cur_attn_sum_low, cur_attn_sum_high;
             
-        tf.while_loop(lambda i, token_id, s_t, alpha_sum_low, alpha_sum_high: tf.less(i,self.tokens_length_max - 1), 
+        tf.while_loop(lambda i, token_id, s_t, alpha_sum_low, alpha_sum_high: tf.less(i,tokens.shape[1] - 1), 
                       step, [i, token_id, s_t, alpha_sum_low, alpha_sum_high]);
         # decoded.shape = (batch, seq_length = 89, num_classes)
         logits_sequence = tf.concat(logits_sequence, axis = 1);
@@ -226,9 +225,9 @@ if __name__ == "__main__":
     from train_mathocr import parse_function_generator;
 
     mathocr = MathOCR((128,128,3));
-    mathocr.load_weights('models/mathocr_12200.h5');
+    mathocr.load_weights('models/mathocr_30800.h5');
 
-    testset = tf.data.TFRecordDataset('testset_2016.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
+    testset = tf.data.TFRecordDataset('testset_2014.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
     for data, tokens in testset:
         img = (data.numpy() * 255.).astype('uint8');
         cv2.imshow('image',img);

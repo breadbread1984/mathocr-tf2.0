@@ -6,16 +6,8 @@ import tensorflow as tf;
 from Model import MathOCR, convert_to_readable;
 
 batch_num = 4;
-#tokens_length_max = 66; # testset_2013
-tokens_length_max = 206; # testset_2014
-#tokens_length_max = 80; # testset 2016
-#tokens_length_max = 90; # trainset
-START = "<SOS>";
-END = "<EOS>";
-PAD = "<PAD>";
-SPECIAL_TOKENS = [START, END, PAD];
 
-def parse_function_generator(pad_code, crop = True, transform = True):
+def parse_function_generator(pad_code, crop = True, transform = True, tokens_length_max = None):
     def parse_function(serialized_example):
         context, sequence = tf.io.parse_single_sequence_example(
             serialized_example,
@@ -59,12 +51,12 @@ def parse_function_generator(pad_code, crop = True, transform = True):
 def main():
     
     # networks
-    mathocr = MathOCR(input_shape = (128,128,3), tokens_length_max = tokens_length_max);
+    mathocr = MathOCR(input_shape = (128,128,3));
     # load dataset
-    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
-    testset_2013 = tf.data.TFRecordDataset('testset_2013.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
-    testset_2014 = tf.data.TFRecordDataset('testset_2014.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
-    testset_2016 = tf.data.TFRecordDataset('testset_2016.tfrecord').map(parse_function_generator(mathocr.token_to_id[PAD], True, True)).shuffle(batch_num).batch(batch_num);
+    trainset = tf.data.TFRecordDataset('trainset.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True, 90)).shuffle(batch_num).batch(batch_num);
+    testset_2013 = tf.data.TFRecordDataset('testset_2013.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True, 66)).shuffle(batch_num).batch(batch_num);
+    testset_2014 = tf.data.TFRecordDataset('testset_2014.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True, 206)).shuffle(batch_num).batch(batch_num);
+    testset_2016 = tf.data.TFRecordDataset('testset_2016.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True, 80)).shuffle(batch_num).batch(batch_num);
     # checkpoints utilities
     optimizer = tf.keras.optimizers.Adam(1e-3, decay = 1e-4);
     if False == os.path.exists('checkpoint'): os.mkdir('checkpoint');
@@ -77,7 +69,7 @@ def main():
 
     def train(data,tokens):
         # skip the first start token, only use the following ground truth values
-        expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+        expected = tf.expand_dims(tokens[:,1:],2);
         data = tf.tile(data,(1,1,1,3));
         with tf.GradientTape() as tape:
             logits = mathocr.train(data, tokens);
@@ -103,7 +95,7 @@ def main():
 
     def eval(data,tokens):
         # skip the first start token, only use the following ground truth values
-        expected = tf.reshape(tokens[:,1:],(-1,tokens_length_max - 1, 1));
+        expected = tf.expand_dims(tokens[:,1:],2);
         data = tf.tile(data,(1,1,1,3));
         _, logits = mathocr(data);
         length = tf.math.reduce_min([expected.shape[1],logits.shape[1]]);
@@ -111,21 +103,21 @@ def main():
         eval_loss.update_state(loss);
 
     while True:
-        # data.shape = (batch, 128, 128, 1)
-        # tokens.shape = (batch, tokens_length_max = 90)
+        # data.shape = (batch, 128, 128, 3)
+        # tokens.shape = (batch, tokens_length_max)
         for data, tokens in trainset:
             loss = train(data,tokens);
         if loss < 0.001: break;
         for data, tokens in testset_2013:
             loss = train(data,tokens);
         if loss < 0.001: break;
-        for data, tokens in testset_2014:
+        for data, tokens in testset_2016:
             loss = train(data,tokens);
         if loss < 0.001: break;
-        for data, tokens in testset_2016:
+        for data, tokens in testset_2014:
             eval(data,tokens);
         with log.as_default():
-            tf.summary.scalar('eval loss 2016',eval_loss.result(), step = optimizer.iterations);
+            tf.summary.scalar('eval loss 2014',eval_loss.result(), step = optimizer.iterations);
         eval_loss.reset_states();
     # subclassing model mathocr can only save weights
     mathocr.save_weights('mathocr.h5');
