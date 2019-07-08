@@ -10,7 +10,7 @@ class Predictor(object):
     def __init__(self, input_shape = (128,128,3), weights_path = 'models/mathocr_30800.h5'):
 
         self.mathocr = MathOCR(input_shape);
-        #self.mathocr.load_weights(weights_path);
+        self.mathocr.load_weights(weights_path);
 
     def predict(self, img):
 
