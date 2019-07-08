@@ -32,6 +32,8 @@ class Predictor(object):
         hw = max_yx - min_yx;
         data = tf.image.crop_to_bounding_box(data, min_yx[0], min_yx[1], hw[0], hw[1]);
         data = tf.image.resize(data, (128,128));
+        # add batch dim
+        data = tf.expand_dims(data, 0);
         # feed to predictor
         token_id_sequence, _ = self.mathocr(data);
         s = convert_to_readable(token_id_sequence, mathocr.id_to_token);
