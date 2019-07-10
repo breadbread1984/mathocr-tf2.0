@@ -225,9 +225,9 @@ if __name__ == "__main__":
     from train_mathocr import parse_function_generator;
 
     mathocr = MathOCR((128,128,3));
-    mathocr.load_weights('models/mathocr_30800.h5');
+    mathocr.load_weights('models/mathocr_35800.h5');
 
-    testset = tf.data.TFRecordDataset('testset_2014.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True));
+    testset = tf.data.TFRecordDataset('testset_2014.tfrecord').map(parse_function_generator(mathocr.token_to_id[mathocr.PAD], True, True, 206));
     for data, tokens in testset:
         img = (data.numpy() * 255.).astype('uint8');
         cv2.imshow('image',img);
