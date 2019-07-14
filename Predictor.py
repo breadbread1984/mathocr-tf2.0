@@ -7,7 +7,7 @@ from Model import MathOCR, convert_to_readable;
 
 class Predictor(object):
 
-    def __init__(self, input_shape = (128,128,3), weights_path = 'models/mathocr_30800.h5'):
+    def __init__(self, input_shape = (128,128,3), weights_path = 'models/mathocr_22500.h5'):
 
         self.mathocr = MathOCR(input_shape);
         self.mathocr.load_weights(weights_path);
@@ -21,20 +21,32 @@ class Predictor(object):
         # threshold
         _, binary = cv2.threshold(gray, 127,255, cv2.THRESH_BINARY);
         # erosion
-        binary = cv2.dilate(binary, kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3), (1,1)), iterations = 1);
-        # convert to tensor
-        data = tf.stack([binary,] * 3, axis = 2);
+        data = cv2.dilate(binary, kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3), (1,1)), iterations = 1);
+
+        cv2.imshow('original',data);
+        cv2.waitKey();
+
         data = tf.cast(data, dtype = tf.float32);
         # preprocess image
         pos = tf.where(tf.greater(255. - tf.squeeze(data),0.));
         min_yx = tf.reduce_min(pos, axis = 0);
         max_yx = tf.reduce_max(pos, axis = 0);
-        hw = max_yx - min_yx;
-        data = tf.image.crop_to_bounding_box(data, min_yx[0], min_yx[1], hw[0], hw[1]);
+        center_yx = min_yx + max_yx // 2;
+        lengths = tf.tile(tf.expand_dims(tf.math.reduce_max(max_yx - min_yx),0),(2,));
+        min_yx = tf.cast(center_yx - lengths // 2, dtype = tf.int64);
+        max_yx = tf.cast(min_yx + lengths, dtype = tf.int64);
+        data = tf.tile(tf.expand_dims(data,-1), (1,1,3,));
+        data = tf.image.crop_to_bounding_box(data, min_yx[0], min_yx[1], lengths[0], lengths[1]);
+
+        cv2.imshow('cropped',data.numpy().astype('uint8'));
+        cv2.waitKey();
+
         data = tf.image.resize(data, (128,128));
+
         # add batch dim
         data = tf.expand_dims(data, 0);
         # feed to predictor
+        data = data / 255.;
         token_id_sequence, _ = self.mathocr(data);
         s = convert_to_readable(token_id_sequence, self.mathocr.id_to_token);
         return s;
