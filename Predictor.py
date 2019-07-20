@@ -22,10 +22,6 @@ class Predictor(object):
         _, binary = cv2.threshold(gray, 127,255, cv2.THRESH_BINARY);
         # erosion
         data = cv2.dilate(binary, kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3,3), (1,1)), iterations = 1);
-
-        cv2.imshow('original',data);
-        cv2.waitKey();
-
         data = tf.cast(data, dtype = tf.float32);
         # preprocess image
         pos = tf.where(tf.greater(255. - tf.squeeze(data),0.));
@@ -37,12 +33,7 @@ class Predictor(object):
         max_yx = tf.cast(min_yx + lengths, dtype = tf.int64);
         data = tf.tile(tf.expand_dims(data,-1), (1,1,3,));
         data = tf.image.crop_to_bounding_box(data, min_yx[0], min_yx[1], lengths[0], lengths[1]);
-
-        cv2.imshow('cropped',data.numpy().astype('uint8'));
-        cv2.waitKey();
-
         data = tf.image.resize(data, (128,128));
-
         # add batch dim
         data = tf.expand_dims(data, 0);
         # feed to predictor
