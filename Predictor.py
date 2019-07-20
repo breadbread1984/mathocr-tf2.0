@@ -7,7 +7,7 @@ from Model import MathOCR, convert_to_readable;
 
 class Predictor(object):
 
-    def __init__(self, input_shape = (128,128,3), weights_path = 'models/mathocr_35800.h5'):
+    def __init__(self, input_shape = (128,128,3), weights_path = '/root/models/mathocr/mathocr.h5'):
 
         self.mathocr = MathOCR(input_shape);
         self.mathocr.load_weights(weights_path);
